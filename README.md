@@ -1,0 +1,185 @@
+# husk
+
+A portable process layer for coding agents, kept outside the code repository.
+
+The code stays in its own git. Around it, husk puts an **envelope**: a folder with the agent's
+process files (`AGENTS.md`, `work/`, `archive/`, `docs/`) and its own git. The agent runs in the
+envelope and sees both. The code repository never sees the envelope: no process files in its
+history, no changes to its `.gitignore`, nothing to hide from teammates.
+
+```
+<project>/                 envelope: its own git, your process files
+├── CLAUDE.md              @AGENTS.md + @repo/<CLAUDE|AGENTS>.md
+├── AGENTS.md              process rules only (work sheets, archive, docs)
+├── husk.json              marker: template profile, repo dir
+├── work/                  active work sheets
+├── archive/               closed sheets, INDEX.md as the entry point
+├── docs/                  decisions and research that outlive a work item
+└── repo/                  the code: its own git, its own rules, untouched
+```
+
+Open it with `cd <project> && claude`. In VS Code the folder shows two repositories in Source Control:
+the envelope and `repo/`.
+
+## Install
+
+Requires Node 22+ and git. No dependencies. Tested on Windows 11 (cmd, PowerShell, Git Bash) and
+Linux (Ubuntu 24.04); macOS shares the Linux code paths.
+
+Windows (cmd or PowerShell):
+
+```
+git clone <url> %USERPROFILE%\husk
+cd %USERPROFILE%\husk
+npm link
+husk
+```
+
+macOS / Linux:
+
+```
+git clone <url> ~/husk
+cd ~/husk && npm link
+husk
+```
+
+`npm link` puts a `husk` command on PATH (a `.cmd` shim on Windows). Without it, run
+`node <path-to-husk>/husk.mjs ...` instead; every example below works either way.
+
+Paths: quote a path that contains spaces. Windows accepts both `C:\Projects\app` and `C:/Projects/app`.
+`~` expands only in a Unix shell; in cmd use `%USERPROFILE%`, in PowerShell `$HOME`.
+
+Git identity: husk commits with whatever `user.name` / `user.email` git resolves for that folder.
+If none is set (no global identity on purpose, none local yet), the init commits are made as
+`husk <husk@localhost>` for that call only; nothing is written to any config. Set a local identity
+in the envelope afterwards: `git config user.name ... && git config user.email ...`.
+
+## Commands
+
+Three ways to get code into `repo/`. The envelope on top is the same in all three.
+
+### `husk wrap <path>` — wrap a folder that is already on disk
+
+```
+# Windows
+husk wrap "C:\Projects\my-app"
+husk wrap "%USERPROFILE%\Downloads\export" --init-git   # folder without .git: init + first commit, then wrap
+
+# macOS / Linux
+husk wrap ~/Projects/my-app
+husk wrap ~/Downloads/export --init-git
+```
+
+Before: `my-app/` is the code. After: `my-app/` is the envelope, the code is in `my-app/repo/`.
+The outer path does not change, so editor workspaces and Claude Code's per-folder memory stay
+attached. Nothing is copied: three renames on one volume.
+
+Use it for your own projects. Run it from outside the folder. On Windows close editors and terminals
+that sit in that folder first: an open handle blocks the rename. On macOS and Linux an open handle does
+not block it, but a shell left inside keeps pointing at the old directory; `cd` out and back in.
+
+### `husk new <dir> --clone <url>` — fresh clone
+
+```
+# Windows
+husk new "C:\Projects\lib-x" --clone https://github.com/org/lib-x.git
+
+# macOS / Linux
+husk new ~/Projects/lib-x --clone git@github.com:org/lib-x.git
+```
+
+Creates `<dir>/`, clones the repository into `<dir>/repo/`, builds the envelope. The source is not
+touched. Use it for someone else's repository, or to set up a project on another machine: clone the
+envelope from your own remote and the code from theirs.
+
+### `husk new <dir> --worktree <repo> [--branch <name>]` — a capsule on a branch
+
+```
+# Windows
+husk new "C:\Projects\my-app-feat-auth" --worktree "C:\Projects\my-app\repo"
+husk new "C:\Projects\my-app-hotfix"    --worktree "C:\Projects\my-app\repo" --branch fix/login
+
+# macOS / Linux
+husk new ~/Projects/my-app-feat-auth --worktree ~/Projects/my-app/repo
+husk new ~/Projects/my-app-hotfix    --worktree ~/Projects/my-app/repo --branch fix/login
+```
+
+Creates `<dir>/`, adds a `git worktree` of the existing repository into `<dir>/repo/` on a new
+branch (named after `<dir>`, or `--branch`), builds the envelope. The code history is shared with the
+source repository: commits made in the capsule are visible there at once, no push needed. The capsule
+has its own `work/`, so two features can run in parallel without mixing their sheets.
+
+Use it when one project needs more than one agent session at a time, or when a large feature deserves
+its own clean context. Remove it with `git -C <source-repo> worktree remove <dir>/repo` after merging.
+
+### `husk apply [dir] [--force]` — update an envelope from the templates
+
+```
+husk apply                                  # inside an envelope: add template files that are missing
+husk apply "C:\Projects\my-app" --force     # Windows: overwrite existing files with the template version
+husk apply ~/Projects/my-app --force        # macOS / Linux
+```
+
+Reads the profile from `husk.json`. Without `--force`, files you edited are kept.
+
+### Options
+
+| Option | Commands | Effect |
+|---|---|---|
+| `--init-git` | wrap | folder without `.git` gets `git init` + commit `initial import` first |
+| `--profile <name>` | wrap, new, apply | use `templates/<name>/`; default `base` |
+| `--no-commit` | wrap, new | build the envelope but skip its initial commit |
+| `--force` | apply | overwrite existing files |
+
+### Which one
+
+| Situation | Command |
+|---|---|
+| my project, already on disk | `wrap` |
+| a folder without git (export, download) | `wrap --init-git` |
+| someone else's repository, or a new machine | `new --clone` |
+| a second parallel session on a project I already wrapped | `new --worktree` |
+| a new file appeared in the templates | `apply` |
+
+## Platform notes
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| rename of a folder with an open handle | blocked; close editors and shells in it first | allowed | allowed |
+| case-insensitive file system | yes | yes by default | no |
+| `npm link` result | `husk.cmd` shim in npm's global bin | `husk` symlink | `husk` symlink |
+| line endings | `.gitattributes` forces LF on `*.mjs`, so the shebang stays valid after a clone | LF | LF |
+| exec bit on `husk.mjs` | not used; the shim or `node husk.mjs` | kept by git (`100755`) | kept by git |
+| path separators | `\` and `/` both accepted; quote paths with spaces | `/` | `/` |
+| WSL | for a repo on the Linux file system run husk inside WSL; for a repo under `C:\` run it from Windows, not through `/mnt/c` | | |
+
+## How the envelope git treats `repo/`
+
+`repo/` is added to the envelope git as a **gitlink** (a submodule entry in `.gitmodules` with
+`ignore = all`), not as an ignored path. Three consequences:
+
+- the envelope `git status` is silent about changes inside `repo/`;
+- each envelope commit records the code sha it was made against;
+- the agent's search still sees the code: ripgrep skips gitignored paths, a gitlink is not ignored.
+
+Never add `repo/` to the envelope `.gitignore`.
+
+## Changing the templates
+
+Templates are plain files in `templates/<profile>/`, same layout as the envelope. Edit the text
+there, add or remove files, then `husk apply` in each envelope to pick up new files (`--force` to
+overwrite edited ones). Placeholders: `{{PROJECT}}`, `{{DATE}}`, `{{REPO_IMPORTS}}`, `{{PROFILE}}`.
+A second profile = a second folder under `templates/`, chosen with `--profile <name>`.
+
+What belongs where:
+
+- `templates/<profile>/AGENTS.md` — process rules only: sheets, archive, docs, how to run repo commands.
+- `repo/AGENTS.md` or `repo/CLAUDE.md` — code rules; they stay in the code repository.
+
+## Facts this layout depends on (Claude Code)
+
+- A bare AGENTS.md is not read when any CLAUDE.md exists in cwd or above; CLAUDE.md with `@AGENTS.md` is required.
+- CLAUDE.md in subfolders loads lazily when the agent touches a file there; the envelope imports `repo/CLAUDE.md` (or `repo/AGENTS.md`) eagerly.
+- `.claude/settings.json`, hooks and `.mcp.json` load from cwd only: a repo's hooks and MCP servers do not load from the envelope; copy them to the envelope `.claude/` if needed.
+- Grep skips gitignored paths: `repo/` must be a gitlink, never a `.gitignore` entry.
+- Every repo command runs with cwd = `repo/` (`git -C repo`, `pnpm -C repo`); the template AGENTS.md says so.
