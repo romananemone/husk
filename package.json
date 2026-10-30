@@ -1,0 +1,9 @@
+{
+  "name": "husk",
+  "version": "0.1.0",
+  "description": "Wraps a code repository in an envelope folder that holds the agent process files in its own git",
+  "type": "module",
+  "bin": { "husk": "./husk.mjs" },
+  "files": ["husk.mjs", "templates"],
+  "license": "MIT"
+}
