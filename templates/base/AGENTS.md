@@ -24,7 +24,9 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 
 ## Work sheets (`work/`)
 
-- One active work item = one sheet `work/<id>-<slug>.md`, created from `work/_TEMPLATE.md`.
+- One active work item = one sheet, created from `work/_TEMPLATE.md`. Either a file `work/<id>-<slug>.md`,
+  or a folder `work/<id>-<slug>/` with `SHEET.md` as the entry point and the item's material beside it
+  (screenshots, logs, drafts, docs); the sheet links that material. Both forms may coexist.
 - Read the active sheet first; it is the context of the work item: goal, steps, findings, decisions.
   Everything the orchestrator, the implementer and the reviewer need to share goes through the sheet,
   by text or by a link to a file, a screenshot, a log.
@@ -35,7 +37,8 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 ## Archive rules
 
 - A sheet is archived when the owner says the work item is closed, not before.
-- Archive = move the sheet to `archive/`, add one line to `archive/INDEX.md`: date, id, title, 1–3 lasting conclusions.
+- Archive = move the sheet (or the whole item folder) to `archive/`, add one line to `archive/INDEX.md`:
+  date, id, title, 1–3 lasting conclusions.
 - Before archiving, check whether a conclusion belongs in `docs/`; if yes, write it there and link it.
 - Do not read `archive/` during normal work. Go there only on an explicit request or when `INDEX.md`
   points to a decision relevant to the current task. Old sheets contain superseded names and rejected ideas.
