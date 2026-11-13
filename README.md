@@ -43,8 +43,24 @@ cd ~/husk && npm link
 husk
 ```
 
-`npm link` puts a `husk` command on PATH (a `.cmd` shim on Windows). Without it, run
-`node <path-to-husk>/husk.mjs ...` instead; every example below works either way.
+`npm link` puts a `husk` command on PATH (a `.cmd` shim on Windows). It links to the folder, it does
+not copy it: after `git pull` in the husk folder the command runs the new code, no relink needed.
+
+Without `npm link`, call the script with node directly; every example below works either way:
+
+```
+# Windows
+node %USERPROFILE%\husk\husk.mjs wrap "C:\Projects\my-app"
+
+# macOS / Linux
+node ~/husk/husk.mjs wrap ~/Projects/my-app
+```
+
+Or without cloning at all, from a public GitHub repository:
+
+```
+npx github:romananemone/husk wrap "C:\Projects\my-app"
+```
 
 Paths: quote a path that contains spaces. Windows accepts both `C:\Projects\app` and `C:/Projects/app`.
 `~` expands only in a Unix shell; in cmd use `%USERPROFILE%`, in PowerShell `$HOME`.
