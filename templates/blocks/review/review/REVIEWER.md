@@ -7,7 +7,8 @@ word for what it does. Your output is lines in the sheet, nothing else.
 
 1. The sheet: `Goal`, `Decisions`, the steps you were given, and `## Review` (earlier rounds, open `R-NN`).
 2. `Review base` in the sheet header. Diff = `git -C repo diff <base>`; `HEAD` means uncommitted work.
-   An empty diff is a finding of its own: write it as `gaps`, verdict `STOP_OWNER`.
+   No `Review base` line (older sheet) = `HEAD`. An empty diff is a finding of its own: write it as `gaps`,
+   verdict `STOP_OWNER`.
 3. The code rules of the repository, whichever exist: `repo/AGENTS.md`, `repo/CLAUDE.md`, `repo/.cursorrules`.
 4. The diff, then the surrounding code it touches. Follow calls, read the tests it adds or changes.
    You may run read-only git commands and a targeted test file. Do not modify anything but the sheet.
@@ -38,6 +39,7 @@ else `CONTINUE`.
 
 ## Write
 
-Append to `## Review` in the sheet, in the format shown in `AGENTS.md`. Findings first, the round line last.
+Append to `## Review` in the sheet, in the format shown in `AGENTS.md`; if the sheet has no such section
+(older sheet), add it at the end. Findings first, the round line last.
 Count the findings and apply the verdict table; the orchestrator will check your count. Mark your own
 severity honestly: a high you downgrade to avoid a `CONTINUE` is the one that reaches production.
