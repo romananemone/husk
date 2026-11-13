@@ -138,6 +138,29 @@ husk apply ~/Projects/my-app --force        # macOS / Linux
 
 Reads the profile from `husk.json`. Without `--force`, files you edited are kept.
 
+### `husk add <block> [dir]` / `husk remove <block> [dir]` / `husk blocks` — optional rule sets
+
+```
+husk blocks                  # list: review, workflow, project-facts
+husk add review              # inside an envelope
+husk add workflow "C:\Projects\my-app"
+husk remove workflow
+```
+
+A block adds files and one section to `AGENTS.md`, kept between `<!-- husk:block NAME -->` markers and
+inserted at the `<!-- husk:blocks -->` anchor (at the end when the file has no anchor). Installed blocks
+are listed in `husk.json`, so `husk apply` on another machine restores them.
+
+| Block | What it adds |
+|---|---|
+| `review` | review loop rules: severity tiers, verdict table, round format in the sheet; `review/REVIEWER.md` for the reviewer subagent; `.claude/agents/reviewer.md` for Claude Code |
+| `workflow` | orchestration: grilling → sheet → implementer subagent → verify → fix loop → commit → close step |
+| `project-facts` | skeleton for local facts: how to run, database, read-only rule, checks, traps |
+
+Text outside the markers is yours. Tune a block's section in place; `husk apply` then reports `differs`
+and leaves it, `husk apply --force` replaces it with the template version. `husk remove` deletes the
+section and the block's files that still equal the template; edited files stay.
+
 ### Options
 
 | Option | Commands | Effect |
@@ -145,7 +168,7 @@ Reads the profile from `husk.json`. Without `--force`, files you edited are kept
 | `--init-git` | wrap | folder without `.git` gets `git init` + commit `initial import` first |
 | `--profile <name>` | wrap, new, apply | use `templates/<name>/`; default `base` |
 | `--no-commit` | wrap, new | build the envelope but skip its initial commit |
-| `--force` | apply | overwrite existing files |
+| `--force` | apply | overwrite existing files and block sections; never rewrites `AGENTS.md` as a whole |
 
 ### Which one
 
@@ -156,6 +179,7 @@ Reads the profile from `husk.json`. Without `--force`, files you edited are kept
 | someone else's repository, or a new machine | `new --clone` |
 | a second parallel session on a project I already wrapped | `new --worktree` |
 | a new file appeared in the templates | `apply` |
+| the project needs the review loop or the orchestration rules | `add review`, `add workflow` |
 
 ## Platform notes
 
@@ -186,6 +210,9 @@ Templates are plain files in `templates/<profile>/`, same layout as the envelope
 there, add or remove files, then `husk apply` in each envelope to pick up new files (`--force` to
 overwrite edited ones). Placeholders: `{{PROJECT}}`, `{{DATE}}`, `{{REPO_IMPORTS}}`, `{{PROFILE}}`.
 A second profile = a second folder under `templates/`, chosen with `--profile <name>`.
+
+A new block = a folder `templates/blocks/<name>/` with `AGENTS.part.md` (the section, starting with a
+`## ` heading) and any files in envelope layout. Nothing else to register.
 
 What belongs where:
 

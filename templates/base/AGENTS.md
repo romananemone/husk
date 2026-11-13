@@ -20,10 +20,14 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
   `work/`, `docs/` or `archive/` to the repo git.
 - `repo/` is a gitlink in this git with `ignore = all`: `git status` here is silent about code changes.
 
+<!-- husk:blocks -->
+
 ## Work sheets (`work/`)
 
 - One active work item = one sheet `work/<id>-<slug>.md`, created from `work/_TEMPLATE.md`.
 - Read the active sheet first; it is the context of the work item: goal, steps, findings, decisions.
+  Everything the orchestrator, the implementer and the reviewer need to share goes through the sheet,
+  by text or by a link to a file, a screenshot, a log.
 - Keep the sheet current: a finding, a decision or a finished step is written down when it happens.
 - Steps are closed in order. A step is `[x]` only after its check (tests, typecheck, manual run) is recorded in the sheet.
 - Code commit sha of each closed step goes into the sheet line.

@@ -3,6 +3,7 @@
 Status: active | done
 Opened: {{DATE}}
 Code branch: <branch in repo/>
+Review base: HEAD
 
 ## Goal
 
@@ -28,3 +29,8 @@ Decisions taken with the owner, dated, with the reason.
 ## Owner TODO
 
 Things only the owner can do (prod, secrets, accounts).
+
+## Review
+
+Written by the reviewer, one block per round; the implementer changes only `open → fixed`.
+`Review base` above names the diff base: `HEAD` for uncommitted work, a sha once the chunk is committed.

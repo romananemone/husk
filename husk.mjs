@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // husk: wraps a code repository in an envelope folder that holds the agent process files
 // (AGENTS.md, work/, archive/, docs/) in its own git, while the code keeps its own git in ./repo.
-// Templates live in ./templates/<profile>/ and mirror the envelope layout one to one.
+// Templates live in ./templates/<profile>/ and mirror the envelope layout one to one. Optional
+// blocks in ./templates/blocks/<name>/ add files the same way plus one section to AGENTS.md,
+// kept between <!-- husk:block NAME --> markers.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,10 +17,14 @@ const USAGE = `usage:
   husk wrap  <repo-path>                       swap in place: <repo-path> becomes the envelope, code moves to <repo-path>/repo
   husk new   <dir> --clone <url>               fresh clone into <dir>/repo
   husk new   <dir> --worktree <repo> [--branch <name>]   worktree of an existing repo into <dir>/repo
-  husk apply [dir]                             copy template files that are missing (--force overwrites)
+  husk apply  [dir]                            copy template files that are missing (--force overwrites)
+  husk add    <block> [dir]                    add a block: its files + its section in AGENTS.md
+  husk remove <block> [dir]                    remove a block's section and its unchanged files
+  husk blocks                                  list available blocks
 options: --profile <name>   templates/<name>, default base
          --init-git         wrap: a folder without .git gets "git init" + an initial commit first
-         --no-commit        do not create the initial envelope commit`;
+         --no-commit        do not create the initial envelope commit
+         --force            apply: overwrite existing files and block sections`;
 
 function fail(message) {
   console.error(`husk: ${message}`);
@@ -107,17 +113,21 @@ function render(text, vars) {
   return text.replace(/\{\{(\w+)\}\}/g, (match, key) => (key in vars ? vars[key] : match));
 }
 
-function applyTemplates(envelope, { profile, force }) {
-  const src = templateDir(profile);
-  const vars = {
+function templateVars(envelope, profile) {
+  return {
     PROJECT: basename(envelope),
     DATE: new Date().toISOString().slice(0, 10),
     REPO_IMPORTS: repoImports(envelope),
     PROFILE: profile,
   };
+}
+
+// Copies every file of `src` into the envelope; existing files are kept unless `force`.
+function copyTemplates(src, envelope, vars, { force, skip = [] }) {
   const written = [];
   const skipped = [];
   for (const rel of listFiles(src)) {
+    if (skip.includes(rel)) continue;
     const target = join(envelope, rel);
     if (existsSync(target) && !force) {
       skipped.push(rel);
@@ -130,6 +140,103 @@ function applyTemplates(envelope, { profile, force }) {
   return { written, skipped };
 }
 
+// AGENTS.md carries hand-written sections and block sections; --force never rewrites it as a whole.
+// To reset it, delete the file and run apply.
+function applyTemplates(envelope, { profile, force }) {
+  const skip = force && existsSync(join(envelope, "AGENTS.md")) ? ["AGENTS.md"] : [];
+  return copyTemplates(templateDir(profile), envelope, templateVars(envelope, profile), { force, skip });
+}
+
+// ---- blocks -----------------------------------------------------------------------------------
+
+const BLOCKS_DIR = join(HERE, "templates", "blocks");
+const SECTION_FILE = "AGENTS.part.md";
+const ANCHOR = "<!-- husk:blocks -->";
+
+function readMarker(envelope) {
+  return JSON.parse(readFileSync(join(envelope, MARKER), "utf8"));
+}
+
+function writeMarker(envelope, marker) {
+  writeFileSync(join(envelope, MARKER), `${JSON.stringify(marker, null, 2)}\n`);
+}
+
+function availableBlocks() {
+  return existsSync(BLOCKS_DIR) ? readdirSync(BLOCKS_DIR, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name) : [];
+}
+
+function blockDir(name) {
+  const dir = join(BLOCKS_DIR, name);
+  if (!existsSync(dir)) fail(`no block ${name}; available: ${availableBlocks().join(", ") || "none"}`);
+  return dir;
+}
+
+const openMarker = (name) => `<!-- husk:block ${name} -->`;
+const closeMarker = (name) => `<!-- /husk:block ${name} -->`;
+
+function sectionText(name, vars) {
+  const file = join(blockDir(name), SECTION_FILE);
+  const body = existsSync(file) ? render(readFileSync(file, "utf8"), vars).trim() : "";
+  return `${openMarker(name)}\n${body}\n${closeMarker(name)}`;
+}
+
+function findSection(text, name) {
+  const start = text.indexOf(openMarker(name));
+  if (start === -1) return null;
+  const endMarker = closeMarker(name);
+  const end = text.indexOf(endMarker, start);
+  if (end === -1) fail(`AGENTS.md has ${openMarker(name)} without ${endMarker}`);
+  return { start, end: end + endMarker.length };
+}
+
+// Puts the block section into AGENTS.md: before the anchor if the file has one, else at the end.
+// An existing section is left alone unless `force`; the caller learns whether it matches the template.
+function upsertSection(envelope, name, vars, { force }) {
+  const path = join(envelope, "AGENTS.md");
+  const text = existsSync(path) ? readFileSync(path, "utf8") : `# ${vars.PROJECT} — husk\n`;
+  const section = sectionText(name, vars);
+  const found = findSection(text, name);
+  if (found) {
+    const current = text.slice(found.start, found.end);
+    if (current === section) return "same";
+    if (!force) return "differs";
+    writeFileSync(path, text.slice(0, found.start) + section + text.slice(found.end));
+    return "updated";
+  }
+  const anchor = text.indexOf(ANCHOR);
+  const next =
+    anchor === -1
+      ? `${text.trimEnd()}\n\n${section}\n`
+      : `${text.slice(0, anchor)}${section}\n\n${text.slice(anchor)}`;
+  writeFileSync(path, next);
+  return "added";
+}
+
+function removeSection(envelope, name) {
+  const path = join(envelope, "AGENTS.md");
+  if (!existsSync(path)) return false;
+  const text = readFileSync(path, "utf8");
+  const found = findSection(text, name);
+  if (!found) return false;
+  const before = text.slice(0, found.start).replace(/\n+$/, "\n\n");
+  const after = text.slice(found.end).replace(/^\n+/, "\n");
+  writeFileSync(path, `${before}${after}`.replace(/\n{3,}/g, "\n\n").replace(/\n+$/, "\n"));
+  return true;
+}
+
+function addBlock(envelope, name, vars, { force }) {
+  const files = copyTemplates(blockDir(name), envelope, vars, { force, skip: [SECTION_FILE] });
+  const section = upsertSection(envelope, name, vars, { force });
+  return { ...files, section };
+}
+
+function report(name, { written, skipped, section }) {
+  for (const f of written) console.log(`wrote   ${f}`);
+  for (const f of skipped) console.log(`kept    ${f}`);
+  const word = { added: "added  ", updated: "updated", same: "kept   ", differs: "differs" }[section];
+  console.log(`${word} AGENTS.md section [${name}]${section === "differs" ? " (edited locally; --force replaces it)" : ""}`);
+}
+
 // ---- envelope init ----------------------------------------------------------------------------
 
 function initEnvelope(envelope, args) {
@@ -139,8 +246,7 @@ function initEnvelope(envelope, args) {
   args.profile ??= "base";
 
   const { written } = applyTemplates(envelope, args);
-  const marker = { husk: 1, profile: args.profile, repo: REPO_DIR, created: new Date().toISOString().slice(0, 10) };
-  writeFileSync(join(envelope, MARKER), `${JSON.stringify(marker, null, 2)}\n`);
+  writeMarker(envelope, { husk: 1, profile: args.profile, repo: REPO_DIR, blocks: [], created: new Date().toISOString().slice(0, 10) });
 
   if (!isGitRepo(envelope)) git(envelope, "init", "-q");
 
@@ -230,14 +336,62 @@ function cmdNew(args) {
   initEnvelope(envelope, args);
 }
 
-function cmdApply(args) {
-  const envelope = resolve(args._[0] ?? process.cwd());
+function envelopeArg(arg) {
+  const envelope = resolve(arg ?? process.cwd());
   if (!isEnvelope(envelope)) fail(`${envelope} is not an envelope (no ${MARKER})`);
-  args.profile ??= JSON.parse(readFileSync(join(envelope, MARKER), "utf8")).profile ?? "base";
+  return envelope;
+}
+
+function cmdApply(args) {
+  const envelope = envelopeArg(args._[0]);
+  const marker = readMarker(envelope);
+  args.profile ??= marker.profile ?? "base";
   const { written, skipped } = applyTemplates(envelope, args);
   for (const f of written) console.log(`wrote   ${f}`);
   for (const f of skipped) console.log(`kept    ${f}`);
-  if (written.length === 0) console.log("nothing to add; use --force to overwrite");
+  const vars = templateVars(envelope, args.profile);
+  for (const name of marker.blocks ?? []) report(name, addBlock(envelope, name, vars, args));
+  if (written.length === 0 && !(marker.blocks ?? []).length) console.log("nothing to add; use --force to overwrite");
+}
+
+function cmdAdd(args) {
+  const name = args._[0] ?? fail("add needs a block name; see: husk blocks");
+  const envelope = envelopeArg(args._[1]);
+  const marker = readMarker(envelope);
+  const vars = { ...templateVars(envelope, marker.profile ?? "base"), BLOCK: name };
+  report(name, addBlock(envelope, name, vars, args));
+  marker.blocks = [...new Set([...(marker.blocks ?? []), name])];
+  writeMarker(envelope, marker);
+}
+
+// Removes the section and the block's files that still equal the template; edited files stay.
+function cmdRemove(args) {
+  const name = args._[0] ?? fail("remove needs a block name");
+  const envelope = envelopeArg(args._[1]);
+  const marker = readMarker(envelope);
+  const vars = { ...templateVars(envelope, marker.profile ?? "base"), BLOCK: name };
+  const src = blockDir(name);
+  console.log(removeSection(envelope, name) ? `removed AGENTS.md section [${name}]` : `no AGENTS.md section [${name}]`);
+  for (const rel of listFiles(src)) {
+    if (rel === SECTION_FILE) continue;
+    const target = join(envelope, rel);
+    if (!existsSync(target)) continue;
+    if (readFileSync(target, "utf8") === render(readFileSync(join(src, rel), "utf8"), vars)) {
+      rmSync(target);
+      console.log(`removed ${rel}`);
+      for (let dir = dirname(target); dir !== envelope && readdirSync(dir).length === 0; dir = dirname(dir)) rmSync(dir, { recursive: true });
+    } else console.log(`kept    ${rel} (edited locally)`);
+  }
+  marker.blocks = (marker.blocks ?? []).filter((b) => b !== name);
+  writeMarker(envelope, marker);
+}
+
+function cmdBlocks() {
+  for (const name of availableBlocks()) {
+    const section = join(BLOCKS_DIR, name, SECTION_FILE);
+    const first = existsSync(section) ? readFileSync(section, "utf8").split("\n").find((l) => l.startsWith("## ")) ?? "" : "";
+    console.log(`${name.padEnd(16)} ${first.replace(/^## /, "")}`);
+  }
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -246,6 +400,9 @@ try {
   if (command === "wrap") cmdWrap(args);
   else if (command === "new") cmdNew(args);
   else if (command === "apply") cmdApply(args);
+  else if (command === "add") cmdAdd(args);
+  else if (command === "remove") cmdRemove(args);
+  else if (command === "blocks") cmdBlocks();
   else {
     console.log(USAGE);
     process.exit(command ? 1 : 0);
