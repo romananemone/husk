@@ -161,6 +161,12 @@ Text outside the markers is yours. Tune a block's section in place; `husk apply`
 and leaves it, `husk apply --force` replaces it with the template version. `husk remove` deletes the
 section and the block's files that still equal the template; edited files stay.
 
+The base rules of `AGENTS.md` live the same way, between `<!-- husk:base -->` and `<!-- /husk:base -->`:
+`husk apply` reports when they drift from the template, `--force` refreshes them, and your own sections
+outside the markers survive. An envelope created before these markers existed has none; `apply` says so
+and skips the region. To let it refresh there, wrap the husk-written text (intro through `## Docs`) in the
+two marker lines once by hand.
+
 ### Options
 
 | Option | Commands | Effect |
@@ -168,7 +174,7 @@ section and the block's files that still equal the template; edited files stay.
 | `--init-git` | wrap | folder without `.git` gets `git init` + commit `initial import` first |
 | `--profile <name>` | wrap, new, apply | use `templates/<name>/`; default `base` |
 | `--no-commit` | wrap, new | build the envelope but skip its initial commit |
-| `--force` | apply | overwrite existing files and block sections; never rewrites `AGENTS.md` as a whole |
+| `--force` | apply | overwrite existing files, the `AGENTS.md` base region and block sections; never rewrites `AGENTS.md` as a whole |
 
 ### Which one
 

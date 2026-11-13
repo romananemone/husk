@@ -1,5 +1,6 @@
 # {{PROJECT}} — husk
 
+<!-- husk:base -->
 This folder is the process layer around the code. The code is a separate git repository in `repo/`.
 This file holds the process rules only. Code rules live in `repo/` (its own AGENTS.md / CLAUDE.md).
 
@@ -19,8 +20,6 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 - Commits of code go to the repo git. Commits of sheets, docs and archive go to this git. Never add
   `work/`, `docs/` or `archive/` to the repo git.
 - `repo/` is a gitlink in this git with `ignore = all`: `git status` here is silent about code changes.
-
-<!-- husk:blocks -->
 
 ## Work sheets (`work/`)
 
@@ -47,3 +46,8 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 
 - Each doc has a status line: `active` or `superseded by <file>`. Superseded docs move to `archive/`.
 - Prefer updating an existing doc over writing a new one.
+<!-- /husk:base -->
+
+<!-- husk:blocks -->
+
+<!-- Your own sections go anywhere outside the husk markers; `husk apply` never touches them. -->

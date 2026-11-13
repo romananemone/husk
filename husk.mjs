@@ -140,11 +140,19 @@ function copyTemplates(src, envelope, vars, { force, skip = [] }) {
   return { written, skipped };
 }
 
-// AGENTS.md carries hand-written sections and block sections; --force never rewrites it as a whole.
-// To reset it, delete the file and run apply.
+// AGENTS.md is never rewritten as a whole once it exists: its husk-owned text sits in a
+// <!-- husk:base --> region that is refreshed like a block section; everything outside is the user's.
 function applyTemplates(envelope, { profile, force }) {
-  const skip = force && existsSync(join(envelope, "AGENTS.md")) ? ["AGENTS.md"] : [];
-  return copyTemplates(templateDir(profile), envelope, templateVars(envelope, profile), { force, skip });
+  const src = templateDir(profile);
+  const vars = templateVars(envelope, profile);
+  const hasAgents = existsSync(join(envelope, "AGENTS.md"));
+  const result = copyTemplates(src, envelope, vars, { force, skip: hasAgents ? ["AGENTS.md"] : [] });
+  if (!hasAgents) return result;
+  const template = render(readFileSync(join(src, "AGENTS.md"), "utf8"), vars);
+  const found = findSection(template, BASE);
+  if (!found) return result;
+  const section = upsertSection(envelope, BASE, template.slice(found.start, found.end), { force });
+  return { ...result, base: section };
 }
 
 // ---- blocks -----------------------------------------------------------------------------------
@@ -152,6 +160,7 @@ function applyTemplates(envelope, { profile, force }) {
 const BLOCKS_DIR = join(HERE, "templates", "blocks");
 const SECTION_FILE = "AGENTS.part.md";
 const ANCHOR = "<!-- husk:blocks -->";
+const BASE = "base";
 
 function readMarker(envelope) {
   return JSON.parse(readFileSync(join(envelope, MARKER), "utf8"));
@@ -171,10 +180,10 @@ function blockDir(name) {
   return dir;
 }
 
-const openMarker = (name) => `<!-- husk:block ${name} -->`;
-const closeMarker = (name) => `<!-- /husk:block ${name} -->`;
+const openMarker = (name) => (name === BASE ? "<!-- husk:base -->" : `<!-- husk:block ${name} -->`);
+const closeMarker = (name) => (name === BASE ? "<!-- /husk:base -->" : `<!-- /husk:block ${name} -->`);
 
-function sectionText(name, vars) {
+function blockSectionText(name, vars) {
   const file = join(blockDir(name), SECTION_FILE);
   const body = existsSync(file) ? render(readFileSync(file, "utf8"), vars).trim() : "";
   return `${openMarker(name)}\n${body}\n${closeMarker(name)}`;
@@ -189,12 +198,12 @@ function findSection(text, name) {
   return { start, end: end + endMarker.length };
 }
 
-// Puts the block section into AGENTS.md: before the anchor if the file has one, else at the end.
+// Puts a marked section into AGENTS.md: before the anchor if the file has one, else at the end.
 // An existing section is left alone unless `force`; the caller learns whether it matches the template.
-function upsertSection(envelope, name, vars, { force }) {
+// The base region is never inserted when absent: an old file without markers is the user's text.
+function upsertSection(envelope, name, section, { force }) {
   const path = join(envelope, "AGENTS.md");
-  const text = existsSync(path) ? readFileSync(path, "utf8") : `# ${vars.PROJECT} — husk\n`;
-  const section = sectionText(name, vars);
+  const text = existsSync(path) ? readFileSync(path, "utf8") : `# ${basename(envelope)} — husk\n`;
   const found = findSection(text, name);
   if (found) {
     const current = text.slice(found.start, found.end);
@@ -203,6 +212,7 @@ function upsertSection(envelope, name, vars, { force }) {
     writeFileSync(path, text.slice(0, found.start) + section + text.slice(found.end));
     return "updated";
   }
+  if (name === BASE) return "unmarked";
   const anchor = text.indexOf(ANCHOR);
   const next =
     anchor === -1
@@ -226,15 +236,23 @@ function removeSection(envelope, name) {
 
 function addBlock(envelope, name, vars, { force }) {
   const files = copyTemplates(blockDir(name), envelope, vars, { force, skip: [SECTION_FILE] });
-  const section = upsertSection(envelope, name, vars, { force });
+  const section = upsertSection(envelope, name, blockSectionText(name, vars), { force });
   return { ...files, section };
+}
+
+function reportSection(name, state) {
+  const word = { added: "added  ", updated: "updated", same: "kept   ", differs: "differs", unmarked: "skipped" }[state];
+  const note = {
+    differs: " (edited locally; --force replaces it)",
+    unmarked: " (no <!-- husk:base --> markers in AGENTS.md; wrap the base text in them to let apply refresh it)",
+  }[state] ?? "";
+  console.log(`${word} AGENTS.md ${name === BASE ? "base region" : `section [${name}]`}${note}`);
 }
 
 function report(name, { written, skipped, section }) {
   for (const f of written) console.log(`wrote   ${f}`);
   for (const f of skipped) console.log(`kept    ${f}`);
-  const word = { added: "added  ", updated: "updated", same: "kept   ", differs: "differs" }[section];
-  console.log(`${word} AGENTS.md section [${name}]${section === "differs" ? " (edited locally; --force replaces it)" : ""}`);
+  reportSection(name, section);
 }
 
 // ---- envelope init ----------------------------------------------------------------------------
@@ -346,12 +364,12 @@ function cmdApply(args) {
   const envelope = envelopeArg(args._[0]);
   const marker = readMarker(envelope);
   args.profile ??= marker.profile ?? "base";
-  const { written, skipped } = applyTemplates(envelope, args);
+  const { written, skipped, base } = applyTemplates(envelope, args);
   for (const f of written) console.log(`wrote   ${f}`);
   for (const f of skipped) console.log(`kept    ${f}`);
+  if (base) reportSection(BASE, base);
   const vars = templateVars(envelope, args.profile);
   for (const name of marker.blocks ?? []) report(name, addBlock(envelope, name, vars, args));
-  if (written.length === 0 && !(marker.blocks ?? []).length) console.log("nothing to add; use --force to overwrite");
 }
 
 function cmdAdd(args) {
