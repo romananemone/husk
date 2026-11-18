@@ -1,15 +1,41 @@
 ## Review
 
-Reviewer: **opus, effort medium** (change here when models change). A fresh subagent per round, never the
-one that wrote the code. Its instructions are `review/REVIEWER.md`; the sheet is the only channel.
+Reviewer: **opus** (change here and in `.claude/agents/reviewer.md`; medium effort when the tool allows). A
+fresh subagent per round, never the one that wrote the code. Its instructions are `review/REVIEWER.md`; the
+sheet is the only channel. Without subagents (a plain CLI): a separate headless session with the same brief.
 
-**When:** a chunk (one step, or the steps named for a batch) is implemented and its gates are green. Only
-chunks that change code; sheet, docs and archive edits are not reviewed.
+**While a work item is open, the code tree is the item's.** Whatever differs from the `Review base` belongs to
+the chunk and is reviewed, whoever wrote it: the implementer, a formatter, the owner. What was in the tree
+before the base is not in the diff. A pull, merge, rebase or branch switch in `repo/` belongs between chunks;
+inside one it lands in the diff and is reviewed with it.
 
-**Brief = three things, nothing else:** the path of `review/REVIEWER.md`, the path of the sheet, the step ids.
-No retelling of the change, no opinion, no summary from the implementer. The reviewer reads the rest itself.
+**Snapshot** = a commit of the code tree as it is now, untracked files included; the index and the working
+tree stay untouched. `node review/snapshot.mjs` prints its sha; `node review/snapshot.mjs <item-id> <label>`
+also pins it against garbage collection, which every sha written into the sheet needs (`<item-id>` = the
+sheet's `<id>`). No sha printed = it failed, stop. A diff is always snapshot to snapshot:
+`git -C repo diff <base> <snapshot of now>`.
 
-**While the reviewer runs, nobody edits the code.** A tree that changes under the reviewer voids the round.
+- `Review base` (sheet header, written `<sha> (S1-S2)`) = snapshot the orchestrator takes **before the chunk's
+  first edit**, label = the chunk ids. The ids are fixed then: steps added later form the next chunk. Not
+  retaken when the header already names this chunk (a resumed session). Missed: the previous chunk's last
+  `at:`, else the commit before the chunk's first change.
+- `at:` (on every round line) = the snapshot the reviewer took and reviewed, label `<chunk>-r<N>`. A closure
+  round diffs from the `at:` of the full round before it, so nothing written in between escapes review.
+- **A chunk passes on the tree its `PASS` round saw.** Before the tick, and again when the next `Review base`
+  is taken, `git -C repo diff --stat <that at:> <snapshot of now>` should print nothing. If it prints
+  something, the orchestrator reads it and decides: a file a tool rewrote → restore it; formatting, a comment
+  or a pull → one line in `## Findings`; behaviour → `(changed)` before the tick; after the tick, the next chunk's `Review base` is
+  that `at:` instead of a fresh snapshot, so the difference is reviewed with it.
+
+**When:** a chunk (one step, or the steps named for a batch) is implemented, its gates are green, and every
+step's check is recorded reproducibly (command + result, or an artifact file). A step whose artifact is
+`pending (<who>)` waits for that person before review. Only chunks that change files git tracks in `repo/` are
+reviewed, docs included; any other step closes on its recorded check alone.
+
+**Brief = three things, nothing else:** the path of `review/REVIEWER.md`, the path of the sheet, the step ids
+written exactly as the header writes them (`S1-S2`, ASCII hyphen, not `S1, S2`). No retelling of the change, no
+opinion, no summary from the implementer. Before briefing, the orchestrator writes the `Next:` line.
+While the reviewer runs, nobody edits the code: it reads the tree, not only the diff.
 
 ### Severity
 
@@ -21,40 +47,71 @@ owner, and the reviewer writes what blocked the scenario (no DB, no runtime).
 | Tier | What |
 |---|---|
 | **high** | data lost or corrupted · a wrong result reaches the user · crash or unhandled path · auth, injection, secret exposure · a recorded decision (sheet, `docs/`) is broken · the step's acceptance check is not met |
-| **med** | wrong behaviour on a rare but real input with moderate consequence · a missing error path that degrades without crashing · a test that does not assert what it claims, or the step's named check has no test · a `repo/` rule broken without a recorded reason · a performance regression a user would notice |
+| **med** | wrong behaviour on a rare but real input with moderate consequence · a missing error path that degrades without crashing · a test that does not assert what it claims, or the step's named check has neither a test nor an artifact · a `repo/` rule broken without a recorded reason · a performance regression a user would notice · a justification comment in the diff (`temporary`, `workaround`, `for now`, `TODO`): the justification belongs in the sheet as a `Q-NN`, the code gets the real fix |
 | **low** | naming, duplication, style, micro-performance, comments and docs · "might", "could", "consider" |
-| not a finding | outside the diff and the step → `X-NN` · present before the diff and untouched → `N-NN` note · needs an owner decision → `Q-NN` |
+| not a finding | outside the diff and the step, or there before the diff and untouched → `X-NN` · needs an owner decision → `Q-NN` |
 
-### Verdict per round
+### Verdict of a full round
 
 | Findings | Verdict | Then |
 |---|---|---|
-| none | `PASS` | step done |
+| none | `PASS` | chunk passed |
 | 0 high, ≤ 1 med, ≤ 2 low | `PASS_AFTER_FIXES` | fix all, run the gates, closure round |
 | above that | `CONTINUE` | fix all, run the gates, next full round |
-| open `Q-NN`, or 3 full rounds without a pass | `STOP_OWNER` | stop the chunk, report, wait |
+| the third or a later full round of this chunk (closures not counted) would be `CONTINUE` | `STOP_OWNER` | stop the chunk, report, wait for the owner's word |
 
-The reviewer writes the verdict; the orchestrator checks it against this table before acting. The table wins.
+A **closure round** is `PASS` or `CONTINUE`: `PASS` when every finding is closed and nothing new appeared,
+else `CONTINUE` → fix, then the next full round (`STOP_OWNER` instead when three full rounds of this chunk
+already ran). Rounds are numbered per chunk; `R-NN`, `Q-NN`, `X-NN` numbers run through the whole sheet.
 
-**Closure** = a fresh reviewer checks only the fix diff: each finding fixed, nothing broken by a fix. Untouched
-code is out of scope. Closure `PASS` closes the step; anything else → `CONTINUE`, next full round.
+The reviewer writes the verdict. The orchestrator may append `→ <verdict> (<why>)` to a round line, and **the
+last verdict on the line is the one that counts**:
+- `(table)`: the reviewer's verdict of a full round does not match the table. The table wins.
+- `(owner)`: the owner's word after a `STOP_OWNER`: `PASS` (the open `R-NN` become `skipped`) or `CONTINUE`.
+- `(changed)`: `CONTINUE` on a `PASS` when the chunk's behaviour changed after it (an answered `Q-NN`, an
+  owner's edit), until the tick. The next round is full. Before a closure the change is in its diff anyway.
+
+**Fix loop**, after `PASS_AFTER_FIXES` or `CONTINUE`. The implementer fixes every `R-NN`, reruns the step's check and **replaces the result in the
+step line**, sets `open → fixed` with `fix: <file:lines> <what changed>`. A fix that changes what an artifact
+shows makes the artifact stale: it is retaken before the next round.
 
 ### In the sheet (`## Review`)
 
 ```
-- round 1 · S1-S2 · full · 2026-01-15 · CONTINUE · high 1 / med 1 / low 1
-  - R-01 high · open · repo/src/x.ts:42 · <what is wrong> · scenario: <input → wrong outcome>
-  - R-02 med  · fixed · repo/src/y.ts:10 · <what is wrong> · scenario: <…> · fix: <what changed>
-  - X-01 · <outside the step>
+- round 1 · S1-S2 · full · 2026-01-15 · PASS_AFTER_FIXES · high 0 / med 1 / low 1 · at: 3fa9c1e
+  - R-01 med · fixed · repo/src/x.ts:42 · <what is wrong> · scenario: <input → wrong outcome> · fix: x.ts:40-52 <what changed>
+  - R-02 low · fixed · repo/src/y.ts:10 · <what is wrong> · scenario: <…> · fix: y.ts:10 <what changed>
+  - X-01 · <outside the step> → step S4 | Owner TODO | dropped: <why>
   - gaps: <what the reviewer could not check>
-- round 2 · S1-S2 · closure · PASS
+- round 2 · S1-S2 · closure · CONTINUE · at: 7c2e0b4
+  - R-01 closed
+  - R-02 still open: <why>            ← its status above goes back to `open`
+  - R-03 med · open · … · <a fix broke this> · scenario: <…>
+- round 3 · S1-S2 · full · 2026-01-16 · PASS · at: 91d04aa
+  - R-02 closed
+  - R-03 closed
+- Q-01 · S1 · answered · asked by reviewer, round 1 of S1-S2 · <question> · answer 2026-01-15: <owner's words>
+- STOP_OWNER: Q-02 open                  ← not a round; a reviewer stopped on an open Q
 ```
 
-- The round line is written last, after the findings: findings without a round line = an unfinished round, rerun it.
-- `R-NN` lines are never deleted or reworded. The implementer changes only `open → fixed` and appends `fix: …`.
-  `skipped` needs the owner's word in the same line.
-- Severity belongs to the reviewer. Disagreement → write a `Q-NN` and stop; do not argue in the sheet.
-- Who fixes: the implementer (see the `workflow` block if present). The orchestrator fixes only what is
-  smaller than a brief.
-- Optional before archiving: one full round over the whole work item with `Review base` = the sha before
-  the item started. Step reviews do not see the seams between steps.
+- The reviewer writes the round line first with `running` in place of the verdict, and the verdict last. A
+  line still `running` = an unfinished round: the orchestrator deletes it with its lines, sets an `R-NN` it
+  reopened back to `fixed`, and reruns the round. `Q-NN`, `STOP_OWNER:` and `STOP:` lines stand outside
+  rounds; a `STOP:` (no `Review base`, empty diff) is the orchestrator's to resolve, not the owner's.
+- A full round first revisits every `R-NN` of this chunk that is not yet `closed` (`closed` / `still open`),
+  then looks for new problems. An `R-NN` still open counts as a finding of the round.
+- `R-NN` lines are never deleted or reworded. The implementer changes only `open → fixed` and appends `fix: …`;
+  a reviewer sets `fixed → open` on one still open. `skipped` is written by the orchestrator with the owner's
+  word and counts as `closed`.
+- `Q-NN`: anyone writes `Q-NN · <step ids or none> · open · asked by <who> · <question>`. The orchestrator
+  relays it to the owner word for word in chat, writes the answer on the same line (`answered`, date, the
+  owner's words) and in `## Decisions`. An open `Q` of this chunk's steps stops this chunk; any other does
+  not.
+- `X-NN` are dispatched by the orchestrator when the chunk closes: a new step, an `Owner TODO` line, or
+  `dropped: <why>` on the X line. None vanishes.
+- Severity belongs to the reviewer. Disagreement → a `Q-NN`, not an argument in the sheet.
+- Who fixes: whoever implemented; with the `workflow` block the implementer, and the orchestrator only what
+  is smaller than a brief.
+- A step whose chunk changes code is ticked `[x]` only after that chunk's `PASS` (full or closure) and with no
+  `Q-NN` of its steps open.
+- At archive the orchestrator drops the item's pins: `node review/snapshot.mjs --drop <item-id>`.
