@@ -1,5 +1,3 @@
 # envelope-only ignores; repo/ is a gitlink, not an ignored path (ripgrep must see it)
 *.local.md
-*.log
-work/.review/
 .DS_Store
