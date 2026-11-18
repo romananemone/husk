@@ -132,11 +132,11 @@ its own clean context. Remove it with `git -C <source-repo> worktree remove <dir
 
 ```
 husk apply                                  # inside an envelope: add template files that are missing
-husk apply "C:\Projects\my-app" --force     # Windows: overwrite existing files with the template version
+husk apply "C:\Projects\my-app" --force     # Windows: refresh husk-owned files with the template version
 husk apply ~/Projects/my-app --force        # macOS / Linux
 ```
 
-Reads the profile from `husk.json`. Without `--force`, files you edited are kept.
+Reads the profile from `husk.json`. Without `--force`, files you edited are kept and reported as `differs`.
 
 ### `husk add <block> [dir]` / `husk remove <block> [dir]` / `husk blocks` — optional rule sets
 
@@ -153,7 +153,7 @@ are listed in `husk.json`, so `husk apply` on another machine restores them.
 
 | Block | What it adds |
 |---|---|
-| `review` | review loop rules: severity tiers, verdict table, round format in the sheet; `review/REVIEWER.md` for the reviewer subagent; `.claude/agents/reviewer.md` for Claude Code |
+| `review` | review loop rules: severity tiers, verdict table, round format in the sheet; `review/REVIEWER.md` for the reviewer subagent; `review/snapshot.mjs`, the one helper script (a commit of the code tree that leaves the index alone); `.claude/agents/reviewer.md` for Claude Code |
 | `workflow` | orchestration: grilling → sheet → implementer subagent → verify → fix loop → commit → close step |
 | `project-facts` | skeleton for local facts: how to run, database, read-only rule, checks, traps |
 
@@ -174,7 +174,7 @@ two marker lines once by hand.
 | `--init-git` | wrap | folder without `.git` gets `git init` + commit `initial import` first |
 | `--profile <name>` | wrap, new, apply | use `templates/<name>/`; default `base` |
 | `--no-commit` | wrap, new | build the envelope but skip its initial commit |
-| `--force` | apply | overwrite existing files, the `AGENTS.md` base region and block sections; never rewrites `AGENTS.md` as a whole |
+| `--force` | apply, add | overwrite husk-owned files, the `AGENTS.md` base region and block sections; never `archive/INDEX.md`, `.gitignore`, `.gitattributes`, `CLAUDE.md`, the `project-facts` section or your own sections of `AGENTS.md` |
 
 ### Which one
 

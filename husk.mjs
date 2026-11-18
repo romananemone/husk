@@ -17,14 +17,14 @@ const USAGE = `usage:
   husk wrap  <repo-path>                       swap in place: <repo-path> becomes the envelope, code moves to <repo-path>/repo
   husk new   <dir> --clone <url>               fresh clone into <dir>/repo
   husk new   <dir> --worktree <repo> [--branch <name>]   worktree of an existing repo into <dir>/repo
-  husk apply  [dir]                            copy template files that are missing (--force overwrites)
+  husk apply  [dir]                            copy template files that are missing, report the ones that differ
   husk add    <block> [dir]                    add a block: its files + its section in AGENTS.md
   husk remove <block> [dir]                    remove a block's section and its unchanged files
   husk blocks                                  list available blocks
 options: --profile <name>   templates/<name>, default base
          --init-git         wrap: a folder without .git gets "git init" + an initial commit first
          --no-commit        do not create the initial envelope commit
-         --force            apply: overwrite existing files and block sections`;
+         --force            apply, add: refresh husk-owned files, the base region and block sections (never your data files)`;
 
 function fail(message) {
   console.error(`husk: ${message}`);
@@ -122,6 +122,10 @@ function templateVars(envelope, profile) {
   };
 }
 
+// Files that hold the owner's data once written, and the block section the owner fills in: never forced.
+const SEEDS = [join("archive", "INDEX.md"), ".gitignore", ".gitattributes", "CLAUDE.md"];
+const FILL_IN = ["project-facts"];
+
 // Copies every file of `src` into the envelope; existing files are kept unless `force`.
 function copyTemplates(src, envelope, vars, { force, skip = [] }) {
   const written = [];
@@ -129,12 +133,15 @@ function copyTemplates(src, envelope, vars, { force, skip = [] }) {
   for (const rel of listFiles(src)) {
     if (skip.includes(rel)) continue;
     const target = join(envelope, rel);
-    if (existsSync(target) && !force) {
-      skipped.push(rel);
+    const text = render(readFileSync(join(src, rel), "utf8"), vars);
+    const seed = SEEDS.includes(rel);
+    if (existsSync(target) && (!force || seed)) {
+      const differs = !seed && readFileSync(target, "utf8").replace(/\r\n/g, "\n") !== text;
+      skipped.push(differs ? `${rel} (differs; --force replaces it)` : rel);
       continue;
     }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, render(readFileSync(join(src, rel), "utf8"), vars));
+    writeFileSync(target, text);
     written.push(rel);
   }
   return { written, skipped };
@@ -230,20 +237,20 @@ function removeSection(envelope, name) {
   if (!found) return false;
   const before = text.slice(0, found.start).replace(/\n+$/, "\n\n");
   const after = text.slice(found.end).replace(/^\n+/, "\n");
-  writeFileSync(path, `${before}${after}`.replace(/\n{3,}/g, "\n\n").replace(/\n+$/, "\n"));
+  writeFileSync(path, `${before}${after}`.replace(/\n+$/, "\n"));
   return true;
 }
 
 function addBlock(envelope, name, vars, { force }) {
   const files = copyTemplates(blockDir(name), envelope, vars, { force, skip: [SECTION_FILE] });
-  const section = upsertSection(envelope, name, blockSectionText(name, vars), { force });
+  const section = upsertSection(envelope, name, blockSectionText(name, vars), { force: force && !FILL_IN.includes(name) });
   return { ...files, section };
 }
 
 function reportSection(name, state) {
   const word = { added: "added  ", updated: "updated", same: "kept   ", differs: "differs", unmarked: "skipped" }[state];
   const note = {
-    differs: " (edited locally; --force replaces it)",
+    differs: FILL_IN.includes(name) ? " (yours to fill; never replaced)" : " (edited locally; --force replaces it)",
     unmarked: " (no <!-- husk:base --> markers in AGENTS.md; wrap the base text in them to let apply refresh it)",
   }[state] ?? "";
   console.log(`${word} AGENTS.md ${name === BASE ? "base region" : `section [${name}]`}${note}`);
@@ -347,7 +354,7 @@ function cmdNew(args) {
   } else {
     const source = resolve(args.worktree);
     if (!isGitRepo(source)) fail(`${source} is not a git repository`);
-    const branch = args.branch ?? basename(envelope);
+    const branch = args.branch ?? basename(envelope).replace(/[^A-Za-z0-9._\/-]+/g, "-");
     const exists = git(source, "branch", "--list", branch) !== "";
     git(source, ...(exists ? ["worktree", "add", repo, branch] : ["worktree", "add", "-b", branch, repo]));
   }
@@ -394,7 +401,7 @@ function cmdRemove(args) {
     if (rel === SECTION_FILE) continue;
     const target = join(envelope, rel);
     if (!existsSync(target)) continue;
-    if (readFileSync(target, "utf8") === render(readFileSync(join(src, rel), "utf8"), vars)) {
+    if (readFileSync(target, "utf8").replace(/\r\n/g, "\n") === render(readFileSync(join(src, rel), "utf8"), vars)) {
       rmSync(target);
       console.log(`removed ${rel}`);
       for (let dir = dirname(target); dir !== envelope && readdirSync(dir).length === 0; dir = dirname(dir)) rmSync(dir, { recursive: true });
