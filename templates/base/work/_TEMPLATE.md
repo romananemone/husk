@@ -24,11 +24,12 @@ Chunk ids are written `S1-S2` (ASCII hyphen) and spelled the same way in every b
 
 ## Findings
 
-Facts discovered during the work, dated. Not a log of actions.
+Facts discovered during the work, dated. Not a log of actions. Conclusion here, raw numbers in a file.
 
 ## Decisions
 
 Decisions taken with the owner, dated, with the reason. Answers to `Q-NN` are copied here.
+Only what is in force; a replaced decision moves to `superseded.md`.
 
 ## Owner TODO
 

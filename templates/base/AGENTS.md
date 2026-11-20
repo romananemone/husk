@@ -37,6 +37,16 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 - Steps are closed in order. A step is `[x]` only after its check (tests, typecheck, manual run) is recorded
   in the sheet, and after its review passed when a review process is in place and its chunk changed code.
 - Code commit sha of each closed code step goes into the sheet line (`sha: later` until it is committed).
+- The sheet holds what the next step needs; everyone reads it whole, every time. The rest moves to files
+  beside it (folder form; turn a file sheet into a folder first), unchanged, never deleted:
+  - a closed step longer than its line → `steps/S<N>.md`; the line keeps what, check result, sha. An open
+    step keeps the results of its checks;
+  - raw evidence (numbers, dumps, logs) → a file; `Findings` keeps the conclusion and the path;
+  - a decision that was replaced → `superseded.md`, the day it is replaced. `Decisions` holds only what is
+    in force.
+
+  A line that refers to moved text names the file. A rule learnt from moved text is written to `Decisions`
+  before the move.
 - `Next:` in the sheet header names the next action and who does it; whoever hands off updates it. A fresh
   session starts there and checks it against the sheet before acting. A sheet without the header lines gets
   them at the first handoff.

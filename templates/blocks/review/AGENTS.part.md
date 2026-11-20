@@ -103,6 +103,10 @@ shows makes the artifact stale: it is retaken before the next round.
 - `R-NN` lines are never deleted or reworded. The implementer changes only `open → fixed` and appends `fix: …`;
   a reviewer sets `fixed → open` on one still open. `skipped` is written by the orchestrator with the owner's
   word and counts as `closed`.
+- When a step closes, the orchestrator moves the rounds of its chunk, unchanged, to `review-closed.md` beside
+  the sheet. The round lines stay, and one line under `## Review` keeps the numbering:
+  `closed rounds: review-closed.md · last: R-14 X-06`. `Q-NN` lines stay in the sheet.
+- `gaps` is one line: what could not be checked and why. Not a list of what was checked.
 - `Q-NN`: anyone writes `Q-NN · <step ids or none> · open · asked by <who> · <question>`. The orchestrator
   relays it to the owner word for word in chat, writes the answer on the same line (`answered`, date, the
   owner's words) and in `## Decisions`. An open `Q` of this chunk's steps stops this chunk; any other does

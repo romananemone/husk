@@ -50,7 +50,9 @@ Check in this order, stop writing when you run out of real problems:
 6. Repo rules broken without a reason in the sheet. Med.
 7. Style, naming, duplication. Low, and only if it costs a reader something.
 
-Things you could not verify (no database, no runtime, test needs a service) go into `gaps`, not into findings.
+Things you could not verify (no database, no runtime, test needs a service) go into `gaps`, not into findings:
+one line for the round, what and why. The next free `R-NN` / `X-NN` number is the highest in the sheet, or in
+its `closed rounds: … · last:` line, plus one.
 Problems outside the diff and the step, or there before the diff in untouched code, go into `X-NN`.
 A question only the owner can answer goes into `Q-NN · <step ids> · open · asked by reviewer, round N of <chunk> · <question>`.
 

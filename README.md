@@ -167,6 +167,24 @@ outside the markers survive. An envelope created before these markers existed ha
 and skips the region. To let it refresh there, wrap the husk-written text (intro through `## Docs`) in the
 two marker lines once by hand.
 
+### Upgrading an older envelope
+
+Commit the envelope first; every step below is then one `git diff` to read.
+
+1. `AGENTS.md` without `<!-- husk:base -->` markers: move your own sections (for example `## Project rules`),
+   the block sections and the `<!-- husk:blocks -->` anchor below `## Docs`, then wrap the husk-written text
+   (intro through `## Docs`) in `<!-- husk:base -->` … `<!-- /husk:base -->`. Anything left inside the
+   markers is replaced in step 3.
+2. Note what you tuned inside block sections (model names, limits): `git diff` after step 3 shows it.
+3. `husk apply --force`, then `git diff`: put back the tuning from step 2, check that your own sections are
+   intact, commit.
+4. Active sheets: add the header lines the template has now (`Review base`, `Next:`), then apply the sheet
+   rules of `AGENTS.md` to each: closed steps, closed review rounds, raw evidence and replaced decisions
+   move to files beside the sheet. Move text, do not rewrite it; the bytes of the sheet plus the new files
+   should equal the old sheet plus the pointer lines. Commit per sheet.
+
+Archived sheets stay as they are.
+
 ### Options
 
 | Option | Commands | Effect |
