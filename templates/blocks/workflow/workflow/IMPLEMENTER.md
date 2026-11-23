@@ -25,7 +25,13 @@ the step ids (or `R-NN` ids, or an answered `Q-NN`); everything else you read yo
 - When fixing review findings: fix every `R-NN` you were given, the low ones too. Then rerun the step's check
   and replace the result in the step line. Change only the finding's status `open → fixed` and append
   `fix: <file:lines> <what changed>`. Never reword or delete a reviewer's line; disagreement goes into a
-  `Q-NN`, not into the code.
+  `Q-NN`, not into the code. For each finding whose scenario can be run: write a test, undo the fix with a
+  reverse edit (never with git: no checkout, restore, stash) and see the test fail, re-apply the fix, append
+  `test: <file>`. Look for the same mistake in the code this chunk changed (the diff since the sheet's `Review base`) and fix it there
+  too; anywhere else it is the reviewer's `X-NN`.
+- Change files with the edit tool, not with a script that rewrites them (`sed`, a one-off Python): layers of
+  quoting eat characters and line endings change.
+- Stop only processes you started, by PID; never by name.
 - Do not tick a step `[x]`, do not commit, stage, stash, reset or check out in `repo/`, do not touch `archive/` or `docs/` unless the step says so.
 - No justification comments in code (`temporary`, `workaround`, `for now`, `TODO`): fix the cause, or raise
   a `Q-NN`.

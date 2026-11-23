@@ -1,0 +1,25 @@
+{
+  "deny": [
+    { "pattern": "\\btaskkill\\b[^;&|\\n]*\\s[/-]im\\b", "why": "taskkill by image name kills every process of that name; use /PID with your own PID" },
+    { "pattern": "\\bpkill\\b", "why": "pkill kills by name; use kill with your own PID" },
+    { "pattern": "\\bkillall\\b", "why": "killall kills by name; use kill with your own PID" },
+    { "pattern": "\\b(?:Stop-Process|spps|kill)\\b[^;&|\\n]*\\s-(?:Name|ProcessName)\\b", "why": "Stop-Process by name kills every process of that name; use -Id with your own PID" },
+    { "pattern": "\\b(?:Get-Process|gps)\\b(?![^;&|\\n]*\\s-Id\\b)(?:[^;&|\\n]|\\|(?!\\|))*?(?<![\\w.\\\\/-])(?:Stop-Process|spps|kill)(?![\\w.-])", "why": "Get-Process by name piped to Stop-Process kills every match; use -Id with your own PID" },
+    { "pattern": "\\b(?:Stop-Process|spps|kill)\\b[^;&|\\n]*\\(\\s*(?:Get-Process|gps)\\b(?![^)]*\\s-Id\\b)", "why": "Stop-Process fed by Get-Process by name kills every match; use -Id with your own PID" },
+    { "pattern": "\\bkill\\b[^;&|\\n]*(?:\\$\\(|`)\\s*(?:pgrep|pidof|ps)\\b", "why": "kill fed by a process lookup by name kills every match; use kill with your own PID" },
+    { "pattern": "\\b(?:pgrep|pidof|ps)\\b[^;&\\n]*\\|\\s*xargs\\b[^\\n]*\\bkill\\b", "why": "kill fed by a process lookup by name kills every match; use kill with your own PID" },
+    { "pattern": "\\bdocker\\s+(?:container\\s+)?(?:rm|kill|stop)\\b[^;&|\\n]*\\bdocker\\s+(?:container\\s+)?(?:ps|ls)\\b", "why": "removing, killing or stopping every container takes down more than your own work" },
+    { "pattern": "\\bdocker\\s+(?:container\\s+)?(?:ps|ls)\\b[^\\n]*\\|\\s*(?:xargs|foreach(?:-object)?|%)\\s[^\\n]*\\bdocker\\s+(?:container\\s+)?(?:rm|kill|stop)\\b", "why": "removing, killing or stopping every container takes down more than your own work" },
+    { "pattern": "\\bdocker\\s+system\\s+prune\\b", "why": "docker system prune removes what other work uses" }
+  ],
+  "ask": [
+    { "pattern": "\\bgit(?:\\s+(?:(?:-C|-c)\\s+(?:\"[^\"]*\"|'[^']*'|[^\\s;&|]+)|--?[a-z][a-z-]*(?:=[^\\s;&|]+)?))*\\s+checkout\\b[^;&|\\n]*?\\s(?:--|\\.)(?=\\s|$|[;&|])", "why": "git checkout of paths discards uncommitted changes that git cannot bring back" },
+    { "pattern": "\\bgit(?:\\s+(?:(?:-C|-c)\\s+(?:\"[^\"]*\"|'[^']*'|[^\\s;&|]+)|--?[a-z][a-z-]*(?:=[^\\s;&|]+)?))*\\s+restore\\b(?:(?![^;&|\\n]*--staged\\b)|[^;&|\\n]*(?:--worktree\\b|\\s-[a-z]*w[a-z]*(?=\\s|$)))", "why": "git restore discards uncommitted changes that git cannot bring back" },
+    { "pattern": "\\bgit(?:\\s+(?:(?:-C|-c)\\s+(?:\"[^\"]*\"|'[^']*'|[^\\s;&|]+)|--?[a-z][a-z-]*(?:=[^\\s;&|]+)?))*\\s+reset\\b[^;&|\\n]*--hard\\b", "why": "git reset --hard discards uncommitted changes that git cannot bring back" },
+    { "pattern": "\\bgit(?:\\s+(?:(?:-C|-c)\\s+(?:\"[^\"]*\"|'[^']*'|[^\\s;&|]+)|--?[a-z][a-z-]*(?:=[^\\s;&|]+)?))*\\s+stash\\b(?!\\s+(?:list|show)\\b)", "why": "git stash moves uncommitted work that may be someone else's" },
+    { "pattern": "\\bgit(?:\\s+(?:(?:-C|-c)\\s+(?:\"[^\"]*\"|'[^']*'|[^\\s;&|]+)|--?[a-z][a-z-]*(?:=[^\\s;&|]+)?))*\\s+clean\\b", "why": "git clean deletes untracked files that git cannot bring back" },
+    { "pattern": "\\brm\\s+(?:[^\\s;&|]+\\s+)*?-(?:[a-z]*r[a-z]*|-recursive)\\s+(?:[^\\s;&|]+\\s+)*?[\"']?(?:[a-z]:[\\\\/]|[\\\\/]|~|\\$\\{?HOME\\b|\\$\\{?env:USERPROFILE\\b|%USERPROFILE%|[^\\s;&|]*\\.\\.)", "why": "recursive delete outside this folder (absolute, home or .. target)" },
+    { "pattern": "(?<![\\w.\\\\/-])(?:Remove-Item|ri|del|erase|rd|rmdir)\\b(?=[^;&|\\n]*\\s-r[a-z]*\\b)[^;&|\\n]*?(?<=[\\s\"'])(?:[a-z]:[\\\\/]|[\\\\/]|~|\\$\\{?HOME\\b|\\$\\{?env:USERPROFILE\\b|%USERPROFILE%|[^\\s;&|]*\\.\\.)", "why": "recursive delete outside this folder (absolute, home or .. target)" },
+    { "pattern": "\\b(?:rd|rmdir|del|erase)\\b(?=[^;&|\\n]*\\s/s\\b)[^;&|\\n]*?(?<=[\\s\"'])(?:[a-z]:[\\\\/]|\\\\|~|\\$HOME\\b|%USERPROFILE%|[^\\s;&|]*\\.\\.)", "why": "recursive delete outside this folder (absolute, home or .. target)" }
+  ]
+}

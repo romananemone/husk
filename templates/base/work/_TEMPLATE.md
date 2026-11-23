@@ -28,7 +28,7 @@ Facts discovered during the work, dated. Not a log of actions. Conclusion here, 
 
 ## Decisions
 
-Decisions taken with the owner, dated, with the reason. Answers to `Q-NN` are copied here.
+Decisions of the owner and of the orchestrator (marked `(orchestrator)`), dated, with the reason. Answers to `Q-NN` are copied here.
 Only what is in force; a replaced decision moves to `superseded.md`.
 
 ## Owner TODO

@@ -123,11 +123,13 @@ function templateVars(envelope, profile) {
 }
 
 // Files that hold the owner's data once written, and the block section the owner fills in: never forced.
-const SEEDS = [join("archive", "INDEX.md"), ".gitignore", ".gitattributes", "CLAUDE.md"];
+const SEEDS = [join("archive", "INDEX.md"), ".gitignore", ".gitattributes", "CLAUDE.md", join(".claude", "settings.json"), join("guard", "patterns.json")];
 const FILL_IN = ["project-facts"];
 
 // Copies every file of `src` into the envelope; existing files are kept unless `force`.
-function copyTemplates(src, envelope, vars, { force, skip = [] }) {
+// A block's seed that differs from the template is reported: the file may be the owner's own, and the block
+// then does not work until the owner merges it by hand. Base seeds always differ and stay silent.
+function copyTemplates(src, envelope, vars, { force, skip = [], block = false }) {
   const written = [];
   const skipped = [];
   for (const rel of listFiles(src)) {
@@ -136,8 +138,8 @@ function copyTemplates(src, envelope, vars, { force, skip = [] }) {
     const text = render(readFileSync(join(src, rel), "utf8"), vars);
     const seed = SEEDS.includes(rel);
     if (existsSync(target) && (!force || seed)) {
-      const differs = !seed && readFileSync(target, "utf8").replace(/\r\n/g, "\n") !== text;
-      skipped.push(differs ? `${rel} (differs; --force replaces it)` : rel);
+      const differs = (!seed || block) && readFileSync(target, "utf8").replace(/\r\n/g, "\n") !== text;
+      skipped.push(differs ? `${rel} (differs; ${seed ? "yours, never replaced" : "--force replaces it"})` : rel);
       continue;
     }
     mkdirSync(dirname(target), { recursive: true });
@@ -242,7 +244,7 @@ function removeSection(envelope, name) {
 }
 
 function addBlock(envelope, name, vars, { force }) {
-  const files = copyTemplates(blockDir(name), envelope, vars, { force, skip: [SECTION_FILE] });
+  const files = copyTemplates(blockDir(name), envelope, vars, { force, skip: [SECTION_FILE], block: true });
   const section = upsertSection(envelope, name, blockSectionText(name, vars), { force: force && !FILL_IN.includes(name) });
   return { ...files, section };
 }

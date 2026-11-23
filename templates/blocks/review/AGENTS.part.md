@@ -73,13 +73,15 @@ last verdict on the line is the one that counts**:
 
 **Fix loop**, after `PASS_AFTER_FIXES` or `CONTINUE`. The implementer fixes every `R-NN`, reruns the step's check and **replaces the result in the
 step line**, sets `open → fixed` with `fix: <file:lines> <what changed>`. A fix that changes what an artifact
-shows makes the artifact stale: it is retaken before the next round.
+shows makes the artifact stale: it is retaken before the next round. A fix of a finding whose scenario can be
+run comes with a test that fails without the fix, recorded as `test: <file>` after `fix:`; without it a
+reviewer leaves the finding open.
 
 ### In the sheet (`## Review`)
 
 ```
 - round 1 · S1-S2 · full · 2026-01-15 · PASS_AFTER_FIXES · high 0 / med 1 / low 1 · at: 3fa9c1e
-  - R-01 med · fixed · repo/src/x.ts:42 · <what is wrong> · scenario: <input → wrong outcome> · fix: x.ts:40-52 <what changed>
+  - R-01 med · fixed · repo/src/x.ts:42 · <what is wrong> · scenario: <input → wrong outcome> · fix: x.ts:40-52 <what changed> · test: x.test.ts
   - R-02 low · fixed · repo/src/y.ts:10 · <what is wrong> · scenario: <…> · fix: y.ts:10 <what changed>
   - X-01 · <outside the step> → step S4 | Owner TODO | dropped: <why>
   - gaps: <what the reviewer could not check>
@@ -100,7 +102,7 @@ shows makes the artifact stale: it is retaken before the next round.
   rounds; a `STOP:` (no `Review base`, empty diff) is the orchestrator's to resolve, not the owner's.
 - A full round first revisits every `R-NN` of this chunk that is not yet `closed` (`closed` / `still open`),
   then looks for new problems. An `R-NN` still open counts as a finding of the round.
-- `R-NN` lines are never deleted or reworded. The implementer changes only `open → fixed` and appends `fix: …`;
+- `R-NN` lines are never deleted or reworded. The implementer changes only `open → fixed` and appends `fix: …` (and `test: …`);
   a reviewer sets `fixed → open` on one still open. `skipped` is written by the orchestrator with the owner's
   word and counts as `closed`.
 - When a step closes, the orchestrator moves the rounds of its chunk, unchanged, to `review-closed.md` beside
@@ -109,11 +111,13 @@ shows makes the artifact stale: it is retaken before the next round.
 - `gaps` is one line: what could not be checked and why. Not a list of what was checked.
 - `Q-NN`: anyone writes `Q-NN · <step ids or none> · open · asked by <who> · <question>`. The orchestrator
   relays it to the owner word for word in chat, writes the answer on the same line (`answered`, date, the
-  owner's words) and in `## Decisions`. An open `Q` of this chunk's steps stops this chunk; any other does
+  owner's words) and in `## Decisions` (with the `workflow` block, a `Q` it may decide itself is answered by
+  it: `Who decides`). An open `Q` of this chunk's steps stops this chunk; any other does
   not.
 - `X-NN` are dispatched by the orchestrator when the chunk closes: a new step, an `Owner TODO` line, or
   `dropped: <why>` on the X line. None vanishes.
-- Severity belongs to the reviewer. Disagreement → a `Q-NN`, not an argument in the sheet.
+- Severity belongs to the reviewer. Disagreement with a finding or its tier → a `Q-NN` that only the owner
+  answers, not an argument in the sheet.
 - Who fixes: whoever implemented; with the `workflow` block the implementer, and the orchestrator only what
   is smaller than a brief.
 - A step whose chunk changes code is ticked `[x]` only after that chunk's `PASS` (full or closure) and with no

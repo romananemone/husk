@@ -17,8 +17,10 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    `work/<id>-<slug>/SHEET.md` when any step will produce a screenshot, a log or other files. Fill `Code
    branch` (check it out in `repo/` if the project uses branches), goal, relevant code paths, decisions, edge
    cases, and the plan as ordered steps, each with its check and, for a step that changes no code, who
-   performs it. Decisions that outlive the item go to `docs/`. **Only the orchestrator moves or renames a
-   sheet**, and never while a subagent is working on it.
+   performs it. A step that hides, removes or restricts data states its check as an invariant over everything
+   returned (`no response for <subject> contains <value>`), not as a list of fields. Decisions that outlive
+   the item go to `docs/`. **Only the orchestrator moves or renames a sheet**, and never while a subagent is
+   working on it.
 4. **Implement.** Before the chunk's first edit, with the review block present, take the `Review base` snapshot
    (`## Review` → Snapshot) unless the header already names this chunk. One step (or a small batch) that
    changes code → one implementer subagent. Brief = the path of `workflow/IMPLEMENTER.md`, the sheet path and
@@ -49,10 +51,17 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    when deferred, filled in from `git -C repo log` before archive), dispatch each `X-NN` of the chunk (new
    step, `Owner TODO`, or `dropped: <why>`), update `Next:`, then `git add repo` and commit this envelope's git
    (any message; the gitlink records the code sha). Tell the owner in chat what he would otherwise have to
-   open the sheet for: what changed, the check results as run, the artifact paths, open `Q-NN` and `X-NN`.
+   open the sheet for: what changed, the check results as run, the artifact paths, decisions the orchestrator took,
+   open `Q-NN` and `X-NN`.
 
 **Closing the item.** When the owner says it is closed: fill every `sha: later`, drop the item's snapshot pins
 (with the review block: `node review/snapshot.mjs --drop <item-id>`), then archive as the archive rules say.
+
+**Who decides.** The owner decides product behaviour, security, money and what git cannot bring back. An
+engineering choice that one commit can undo is the orchestrator's: it goes to `## Decisions` as
+`(orchestrator) <decision> · why: <reason>`, and a `Q-NN` of that kind is answered the same way,
+`answered (orchestrator)`. The owner's objection reverts it. An orchestrator decision never replaces one
+the owner took: when a new instruction contradicts a recorded decision, name the conflict first, then act.
 
 The implementer and the reviewer are never the same subagent. Nobody reviews their own fix.
 
