@@ -141,7 +141,7 @@ Reads the profile from `husk.json`. Without `--force`, files you edited are kept
 ### `husk add <block> [dir]` / `husk remove <block> [dir]` / `husk blocks` — optional rule sets
 
 ```
-husk blocks                  # list: guard, review, workflow, project-facts
+husk blocks                  # list: guard, review, scenarios, workflow, project-facts
 husk add review              # inside an envelope
 husk add workflow "C:\Projects\my-app"
 husk remove workflow
@@ -154,6 +154,7 @@ are listed in `husk.json`, so `husk apply` on another machine restores them.
 | Block | What it adds |
 |---|---|
 | `review` | review loop rules: severity tiers, verdict table, round format in the sheet; `review/REVIEWER.md` for the reviewer subagent; `review/snapshot.mjs`, the one helper script (a commit of the code tree that leaves the index alone); `.claude/agents/reviewer.md` for Claude Code |
+| `scenarios` | optional, after grilling: a `describer` subagent that knows the product from outside, not its code, writes the use cases the goal implies into the sheet; the orchestrator sorts them, accepted ones become step checks; `scenarios/DESCRIBER.md`, `.claude/agents/describer.md` for Claude Code |
 | `workflow` | orchestration: grilling → sheet → implementer subagent → verify → fix loop → commit → close step |
 | `project-facts` | skeleton for local facts: how to run, database, read-only rule, checks, traps |
 | `guard` | Claude Code only: a PreToolUse hook (`guard/guard.mjs`, `.claude/settings.json`) that denies shell commands hitting more than the agent's own work (kill by name, remove every container) and asks the owner before ones git cannot undo (`git checkout -- <file>`, `restore`, `reset --hard`, `stash`, `clean`, recursive delete outside the folder); the rules in `guard/patterns.json` are yours to edit. An envelope that already has its own `.claude/settings.json` keeps it (`add` reports `differs; yours, never replaced`): merge the `hooks` entry by hand |
