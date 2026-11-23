@@ -35,7 +35,7 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    does not add up; the reviewer reruns the recorded check anyway. Then the review (see `## Review` if the block is present). Update the
    `Next:` line in the sheet header at every handoff: who acts next and on what. On resume, check `Next:`
    against the sheet: the chunk's last verdict `CONTINUE` or `PASS_AFTER_FIXES` and no `R-NN` of it `open` →
-   brief the reviewer; `STOP_OWNER` → wait for the owner.
+   brief the reviewer; `STOP_OWNER` → `(approach)` if the review block allows it, else wait for the owner.
 6. **Fix loop**, after `PASS_AFTER_FIXES` or `CONTINUE`. Findings go back to the implementer: the same one if it is still alive (message
    it with the `R-NN` ids), a fresh one otherwise (brief = IMPLEMENTER.md path + sheet path + `R-NN` ids, or
    the id of an answered `Q-NN` that changes code). You read the fix diff against
@@ -51,17 +51,26 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    when deferred, filled in from `git -C repo log` before archive), dispatch each `X-NN` of the chunk (new
    step, `Owner TODO`, or `dropped: <why>`), update `Next:`, then `git add repo` and commit this envelope's git
    (any message; the gitlink records the code sha). Tell the owner in chat what he would otherwise have to
-   open the sheet for: what changed, the check results as run, the artifact paths, decisions the orchestrator took,
-   open `Q-NN` and `X-NN`.
+   open the sheet for: what changed, the check results as run, the artifact paths, decisions the orchestrator took
+   (the `(orchestrator, product)` ones listed apart), open `Q-NN` and `X-NN`.
 
 **Closing the item.** When the owner says it is closed: fill every `sha: later`, drop the item's snapshot pins
 (with the review block: `node review/snapshot.mjs --drop <item-id>`), then archive as the archive rules say.
 
-**Who decides.** The owner decides product behaviour, security, money and what git cannot bring back. An
+**Who decides.** The owner decides security, money, what git cannot bring back, and product behaviour (what a
+user can do or see, rights, data, prices, promises to people), except as the next paragraph says. An
 engineering choice that one commit can undo is the orchestrator's: it goes to `## Decisions` as
 `(orchestrator) <decision> · why: <reason>`, and a `Q-NN` of that kind is answered the same way,
-`answered (orchestrator)`. The owner's objection reverts it. An orchestrator decision never replaces one
-the owner took: when a new instruction contradicts a recorded decision, name the conflict first, then act.
+`answered (orchestrator)`. The owner's objection reverts it.
+
+Product behaviour, three kinds. The goal, a recorded decision or the product's behaviour in a like place
+already answers it: ask the owner anyway, with that answer as the recommended option and where it comes from.
+A small visible detail before release (a label, a default order, an error text): the orchestrator's, written
+to `## Decisions` as `(orchestrator, product) <decision> · why: <reason>`. A new choice nothing answers: the
+owner's, asked without a default.
+
+An orchestrator decision of any kind never replaces one the owner took: when a new instruction contradicts a
+recorded decision, name the conflict first, then act.
 
 The implementer and the reviewer are never the same subagent. Nobody reviews their own fix.
 

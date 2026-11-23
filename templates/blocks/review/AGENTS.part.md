@@ -58,7 +58,7 @@ owner, and the reviewer writes what blocked the scenario (no DB, no runtime).
 | none | `PASS` | chunk passed |
 | 0 high, ≤ 1 med, ≤ 2 low | `PASS_AFTER_FIXES` | fix all, run the gates, closure round |
 | above that | `CONTINUE` | fix all, run the gates, next full round |
-| the third or a later full round of this chunk (closures not counted) would be `CONTINUE` | `STOP_OWNER` | stop the chunk, report, wait for the owner's word |
+| the third or a later full round of this chunk (closures not counted) would be `CONTINUE` | `STOP_OWNER` | stop the chunk, report; the owner's word, or `(approach)` once |
 
 A **closure round** is `PASS` or `CONTINUE`: `PASS` when every finding is closed and nothing new appeared,
 else `CONTINUE` → fix, then the next full round (`STOP_OWNER` instead when three full rounds of this chunk
@@ -68,6 +68,12 @@ The reviewer writes the verdict. The orchestrator may append `→ <verdict> (<wh
 last verdict on the line is the one that counts**:
 - `(table)`: the reviewer's verdict of a full round does not match the table. The table wins.
 - `(owner)`: the owner's word after a `STOP_OWNER`: `PASS` (the open `R-NN` become `skipped`) or `CONTINUE`.
+- `(approach)`: `CONTINUE` on a `STOP_OWNER`, once per chunk, only when every finding still open is an
+  engineering matter the orchestrator may decide (`Who decides` in the `workflow` block; without it there is
+  none). The same place is not sent to be fixed again: the orchestrator changes the approach (drops or
+  simplifies the disputed part), records it in `## Decisions`, and the next round is full. A later
+  `STOP_OWNER`, a finding that is the owner's, or an open `Q-NN` → the owner. `PASS` with findings open
+  stays `(owner)`'s.
 - `(changed)`: `CONTINUE` on a `PASS` when the chunk's behaviour changed after it (an answered `Q-NN`, an
   owner's edit), until the tick. The next round is full. Before a closure the change is in its diff anyway.
 
