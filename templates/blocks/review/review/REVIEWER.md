@@ -13,7 +13,8 @@ word for what it does. Your output is lines in the sheet, nothing else.
    `owner: answer Q-NN`, and stop.
 3. **Which round this is.** Find the last round line whose step ids equal yours exactly; read the **last**
    verdict on that line (the orchestrator may have appended `→ <verdict> (<why>)`). `full` with
-   `PASS_AFTER_FIXES` → this is a closure round; anything else, or no round yet → a full round.
+   `PASS_AFTER_FIXES` → this is a closure round; anything else (a closure line too, `PASS (orchestrator)`
+   among them), or no round yet → a full round.
 4. **The diff.** Take a snapshot of the tree as it is now and pin it:
    `node review/snapshot.mjs <sheet id> <chunk>-r<N>` prints its sha; it goes on your round line as
    `at: <sha>`. Full round: `git -C repo diff <Review base> <at>` (sheet header). Closure round:
@@ -40,8 +41,10 @@ Check in this order, stop writing when you run out of real problems:
 
 1. Does the diff do what the step says? Acceptance check met? Reproduce the step's check: rerun the recorded
    command and compare the result, or open the linked artifact (screenshot, log) and compare it with the claim.
-   Different from the claim, or no command and no artifact to check against: high (the acceptance check is
-   not met). A check recorded as an artifact counts as covered; a step with `by:` changes no code and is not
+   A check slower than about a minute, and an artifact, you do not rerun: `git -C repo diff --stat <its @ sha> <your at:>`.
+   Nothing, or nothing the check exercises: the result stands. Anything else, or no `@ <sha>`: stale. A log's
+   time is no evidence. Different from the claim, stale, or no command and no artifact to check against: high
+   (the acceptance check is not met). A check recorded as an artifact counts as covered; a step with `by:` changes no code and is not
    checked.
 2. Can it lose or corrupt data, return a wrong result, crash, or expose something? High.
 3. Does it break a decision recorded in the sheet or `docs/`? High.

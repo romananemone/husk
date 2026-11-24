@@ -26,16 +26,18 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    changes code → one implementer subagent. Brief = the path of `workflow/IMPLEMENTER.md`, the sheet path and
    the step ids, not a retelling. The implementer records each check reproducibly in the step line
    (`check: pytest -q → 48 passed`, or `· artifact: s2-settings.png` in the item's folder for anything not
-   reproducible in a minute). When it cannot make the artifact itself (no scripted driver), it writes
-   `artifact: pending (<who>)` and hands back; the orchestrator or the owner supplies it before the review. A
-   step that changes no code is performed by whoever the step names; the orchestrator writes the result into
-   its `check:` from that person's words.
+   reproducible in a minute; with the review block it ends `@ <sha>`). When it cannot make the artifact
+   itself (no scripted driver), it writes `artifact: pending (<who>)` and hands back; the orchestrator or the
+   owner supplies it before the review, and with the review block the orchestrator takes its `@ <sha>`
+   snapshot when it files it; without, no `@`. A step that changes no code is performed by whoever the step
+   names; the orchestrator writes the result into its `check:` from that person's words.
 5. **Verify.** Do not take the implementer's summary on trust: read the diff and check it against the step and
    the decisions. Rerun the gates only when you changed the tree after the implementer or its recorded output
    does not add up; the reviewer reruns the recorded check anyway. Then the review (see `## Review` if the block is present). Update the
    `Next:` line in the sheet header at every handoff: who acts next and on what. On resume, check `Next:`
    against the sheet: the chunk's last verdict `CONTINUE` or `PASS_AFTER_FIXES` and no `R-NN` of it `open` →
-   brief the reviewer; `STOP_OWNER` → `(approach)` if the review block allows it, else wait for the owner.
+   brief the reviewer, or close the round yourself where the review block lets you; `STOP_OWNER` →
+   `(approach)` if the review block allows it, else wait for the owner.
 6. **Fix loop**, after `PASS_AFTER_FIXES` or `CONTINUE`. Findings go back to the implementer: the same one if it is still alive (message
    it with the `R-NN` ids), a fresh one otherwise (brief = IMPLEMENTER.md path + sheet path + `R-NN` ids, or
    the id of an answered `Q-NN` that changes code). You read the fix diff against
@@ -48,9 +50,10 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    without committing = a deferred commit: fine, the next chunk's `Review base` keeps the reviews apart.
 8. **Close the step.** Tick `[x]` (after the review passed when there is one and the chunk changed code; on the
    recorded check alone when it did not), add the commit sha to the step line of a code step (`sha: later`
-   when deferred, filled in from `git -C repo log` before archive), dispatch each `X-NN` of the chunk (new
-   step, `Owner TODO`, or `dropped: <why>`), update `Next:`, then `git add repo` and commit this envelope's git
-   (any message; the gitlink records the code sha). Tell the owner in chat what he would otherwise have to
+   when deferred, filled in from `git -C repo log` before archive), dispatch each `X-NN` of the chunk and each
+   `gaps` line that names unverified behaviour (new step, `Owner TODO`, or `dropped: <why>`), update `Next:`,
+   then `git add repo` and commit this envelope's git (any message; the gitlink records the code sha). Tell
+   the owner in chat what he would otherwise have to
    open the sheet for: what changed, the check results as run, the artifact paths, decisions the orchestrator took
    (the `(orchestrator, product)` ones listed apart), open `Q-NN` and `X-NN`.
 

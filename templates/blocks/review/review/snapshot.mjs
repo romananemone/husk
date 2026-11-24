@@ -4,6 +4,7 @@
 //
 //   node review/snapshot.mjs                      print the sha
 //   node review/snapshot.mjs <item-id> <label>    print the sha and pin it against garbage collection
+//                                                 (a taken label keeps its pin: the new sha goes to <label>.2, .3, ...)
 //   node review/snapshot.mjs --drop <item-id>     delete every pin of the item
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, rmSync } from "node:fs";
@@ -17,6 +18,17 @@ const git = (args, env = {}) =>
 
 // Worktrees of one repository share their refs, so the envelope's folder name is part of the pin path.
 const pins = (item) => `refs/husk/${basename(envelope).replace(/[^A-Za-z0-9._-]+/g, "_")}/${item}`;
+
+// A pin is never moved: a label already pinned to another commit gets the new sha under <label>.2, .3, ...
+const pin = (sha) => {
+  const base = `${pins(first)}/${second}`;
+  for (let n = 1; ; n++) {
+    const ref = n === 1 ? base : `${base}.${n}`;
+    const current = git(["for-each-ref", "--format=%(objectname)", ref]);
+    if (!current) return git(["update-ref", ref, sha]);
+    if (current === sha) return;
+  }
+};
 
 const [first, second] = process.argv.slice(2);
 if (!second && first) throw new Error("usage: snapshot.mjs [<item-id> <label> | --drop <item-id>]");
@@ -37,7 +49,7 @@ if (first === "--drop") {
     const tree = git(["write-tree"], env);
     const identity = ["-c", "user.name=husk", "-c", "user.email=husk@localhost"];
     const sha = git([...identity, "commit-tree", tree, "-p", "HEAD", "-m", "snapshot"]);
-    if (first) git(["update-ref", `${pins(first)}/${second}`, sha]);
+    if (first) pin(sha);
     console.log(sha);
   } finally {
     rmSync(index, { force: true });

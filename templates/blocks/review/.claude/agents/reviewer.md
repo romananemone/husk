@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Fresh-context code reviewer for a work-sheet chunk. Use for every review round (full or closure). Brief = the path of review/REVIEWER.md, the sheet path and the step ids exactly as the sheet header writes them; nothing else.
+description: Fresh-context code reviewer for a work-sheet chunk. Use for every full round, and for a closure round unless the review rules let the orchestrator close it. Brief = the path of review/REVIEWER.md, the sheet path and the step ids exactly as the sheet header writes them; nothing else.
 model: opus
 tools: Read, Grep, Glob, Edit, Bash
 ---

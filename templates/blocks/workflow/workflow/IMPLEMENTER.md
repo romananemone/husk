@@ -20,7 +20,9 @@ the step ids (or `R-NN` ids, or an answered `Q-NN`); everything else you read yo
   in the step line so the reviewer can reproduce it: `check: <command> → <result>`. The diff says what you
   changed; do not retell it in the sheet. Anything not reproducible
   in a minute (screenshot, manual run) gets an artifact file in the item's folder, linked as
-  `· artifact: <file>`. If you cannot produce it (no scripted driver, no display), write
+  `· artifact: <file>`. A check that takes longer than about a minute, and every artifact, ends with `@ <sha>`,
+  the snapshot taken right before the run: `node review/snapshot.mjs <item-id> <step>-check` (needs the review
+  block). If you cannot produce it (no scripted driver, no display), write
   `artifact: pending (<who>)` and hand back. Never move or rename the sheet.
 - When fixing review findings: fix every `R-NN` you were given, the low ones too. Then rerun the step's check
   and replace the result in the step line. Change only the finding's status `open → fixed` and append

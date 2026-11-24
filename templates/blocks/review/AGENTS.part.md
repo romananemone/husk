@@ -19,7 +19,7 @@ sheet's `<id>`). No sha printed = it failed, stop. A diff is always snapshot to 
   first edit**, label = the chunk ids. The ids are fixed then: steps added later form the next chunk. Not
   retaken when the header already names this chunk (a resumed session). Missed: the previous chunk's last
   `at:`, else the commit before the chunk's first change.
-- `at:` (on every round line) = the snapshot the reviewer took and reviewed, label `<chunk>-r<N>`. A closure
+- `at:` (on every round line) = the snapshot the round's author took and reviewed, label `<chunk>-r<N>`. A closure
   round diffs from the `at:` of the full round before it, so nothing written in between escapes review.
 - **A chunk passes on the tree its `PASS` round saw.** Before the tick, and again when the next `Review base`
   is taken, `git -C repo diff --stat <that at:> <snapshot of now>` should print nothing. If it prints
@@ -28,7 +28,8 @@ sheet's `<id>`). No sha printed = it failed, stop. A diff is always snapshot to 
   that `at:` instead of a fresh snapshot, so the difference is reviewed with it.
 
 **When:** a chunk (one step, or the steps named for a batch) is implemented, its gates are green, and every
-step's check is recorded reproducibly (command + result, or an artifact file). A step whose artifact is
+step's check is recorded reproducibly (command + result, or an artifact file); a check slower than about a
+minute and every artifact carry `@ <sha>`, the snapshot they ran on (`<step>-check`). A step whose artifact is
 `pending (<who>)` waits for that person before review. Only chunks that change files git tracks in `repo/` are
 reviewed, docs included; any other step closes on its recorded check alone.
 
@@ -62,7 +63,12 @@ owner, and the reviewer writes what blocked the scenario (no DB, no runtime).
 
 A **closure round** is `PASS` or `CONTINUE`: `PASS` when every finding is closed and nothing new appeared,
 else `CONTINUE` → fix, then the next full round (`STOP_OWNER` instead when three full rounds of this chunk
-already ran). Rounds are numbered per chunk; `R-NN`, `Q-NN`, `X-NN` numbers run through the whole sheet.
+already ran). After a `PASS_AFTER_FIXES` whose findings were all `low`, the closure round may be the
+orchestrator's: it takes the snapshot (`<chunk>-r<N>`), reruns the step's check and every `test:` the fixes
+name, reads the fix diff against each scenario, and writes the round line itself in the usual format, verdict `PASS (orchestrator)`, its `at:` included,
+with `R-NN closed` under it. If anything does not close or reproduce it writes nothing and briefs a reviewer. Not
+when it made any of those fixes itself, never after a `med` or `high`. Rounds are numbered per chunk; `R-NN`,
+`Q-NN`, `X-NN` numbers run through the whole sheet.
 
 The reviewer writes the verdict. The orchestrator may append `→ <verdict> (<why>)` to a round line, and **the
 last verdict on the line is the one that counts**:
@@ -79,7 +85,7 @@ last verdict on the line is the one that counts**:
 
 **Fix loop**, after `PASS_AFTER_FIXES` or `CONTINUE`. The implementer fixes every `R-NN`, reruns the step's check and **replaces the result in the
 step line**, sets `open → fixed` with `fix: <file:lines> <what changed>`. A fix that changes what an artifact
-shows makes the artifact stale: it is retaken before the next round. A fix of a finding whose scenario can be
+shows or a slow check exercises makes it stale: it is retaken before the next round. A fix of a finding whose scenario can be
 run comes with a test that fails without the fix, recorded as `test: <file>` after `fix:`; without it a
 reviewer leaves the finding open.
 
@@ -121,7 +127,8 @@ reviewer leaves the finding open.
   it: `Who decides`). An open `Q` of this chunk's steps stops this chunk; any other does
   not.
 - `X-NN` are dispatched by the orchestrator when the chunk closes: a new step, an `Owner TODO` line, or
-  `dropped: <why>` on the X line. None vanishes.
+  `dropped: <why>` on the X line. None vanishes. A `gaps` line that names behaviour nobody verified (not
+  merely a command not rerun) is dispatched the same way; `dropped: <why>` is appended to the gaps line.
 - Severity belongs to the reviewer. Disagreement with a finding or its tier → a `Q-NN` that only the owner
   answers, not an argument in the sheet.
 - Who fixes: whoever implemented; with the `workflow` block the implementer, and the orchestrator only what
