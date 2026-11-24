@@ -47,6 +47,12 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 
   A line that refers to moved text names the file. A rule learnt from moved text is written to `Decisions`
   before the move.
+- Limits: a step is one entry of at most 600 characters, its `check:` the latest result only (a new one
+  replaces the old); what it needs beyond that goes to `steps/S<N>.md` from the moment it is needed, not only
+  at close. `Findings` holds conclusions; an implementer's choices inside a step go to that step's file.
+  How to run the stand and recipes that repeat across items live in `## Project facts` or `docs/`, never in a
+  sheet. A sheet is at most 32 KB; over it, the orchestrator applies the moves above before the next hand-off.
+  `Status` is `active | paused | done`.
 - `Next:` in the sheet header names the next action and who does it; whoever hands off updates it. A fresh
   session starts there and checks it against the sheet before acting. A sheet without the header lines gets
   them at the first handoff.

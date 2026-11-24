@@ -1,6 +1,6 @@
 # <id> — <title>
 
-Status: active | done
+Status: active | paused | done
 Opened: <YYYY-MM-DD>
 Code branch: <branch in repo/>
 Review base: <snapshot sha> (<chunk ids>), taken at the start of the current chunk
