@@ -123,7 +123,7 @@ function templateVars(envelope, profile) {
 }
 
 // Files that hold the owner's data once written, and the block section the owner fills in: never forced.
-const SEEDS = [join("archive", "INDEX.md"), ".gitignore", ".gitattributes", "CLAUDE.md", join(".claude", "settings.json"), join("guard", "patterns.json")];
+const SEEDS = [join("archive", "INDEX.md"), ".gitignore", ".gitattributes", "CLAUDE.md", join(".claude", "settings.json"), join("guard", "patterns.json"), join("work", "BACKLOG.md")];
 const FILL_IN = ["project-facts"];
 
 // Copies every file of `src` into the envelope; existing files are kept unless `force`.

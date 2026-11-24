@@ -72,6 +72,8 @@ This file holds the process rules only. Code rules live in `repo/` (its own AGEN
 
 - Each doc has a status line: `active` or `superseded by <file>`. Superseded docs move to `archive/`.
 - Prefer updating an existing doc over writing a new one.
+- A decision earns a doc when it is hard to undo, would surprise a reader without the context, and was a real
+  trade-off; otherwise it stays in the sheet.
 <!-- /husk:base -->
 
 <!-- husk:blocks -->

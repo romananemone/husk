@@ -18,9 +18,10 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    branch` (check it out in `repo/` if the project uses branches), goal, relevant code paths, decisions, edge
    cases, and the plan as ordered steps, each with its check and, for a step that changes no code, who
    performs it. A step that hides, removes or restricts data states its check as an invariant over everything
-   returned (`no response for <subject> contains <value>`), not as a list of fields. Decisions that outlive
-   the item go to `docs/`. **Only the orchestrator moves or renames a sheet**, and never while a subagent is
-   working on it.
+   returned (`no response for <subject> contains <value>`), not as a list of fields. A step that changes
+   behaviour names where it is tested (the interface the test goes through), agreed before the steps are
+   written; one place is the aim. Decisions that outlive the item go to `docs/`. **Only the orchestrator moves
+   or renames a sheet**, and never while a subagent is working on it.
 4. **Implement.** Before the chunk's first edit, with the review block present, take the `Review base` snapshot
    (`## Review` → Snapshot) unless the header already names this chunk. One step (or a small batch) that
    changes code → one implementer subagent. Brief = the path of `workflow/IMPLEMENTER.md`, the sheet path and
@@ -57,8 +58,11 @@ Without subagents (a plain CLI), an implementer or reviewer is a separate headle
    open the sheet for: what changed, the check results as run, the artifact paths, decisions the orchestrator took
    (the `(orchestrator, product)` ones listed apart), open `Q-NN` and `X-NN`.
 
-**Closing the item.** When the owner says it is closed: fill every `sha: later`, drop the item's snapshot pins
-(with the review block: `node review/snapshot.mjs --drop <item-id>`), then archive as the archive rules say.
+**Closing the item.** When the owner says it is closed, first read the item's `R-NN` lines once. A class of
+mistake seen twice in the item, or already listed under `Known traps` (`## Project facts`, or your own section
+of this file), becomes a `lint candidate` step of this item, as below, done and closed before the rest; one
+seen for the first time gets a line there. Then fill every `sha: later`, drop the item's snapshot pins (with
+the review block: `node review/snapshot.mjs --drop <item-id>`), and archive as the archive rules say.
 
 **Who decides.** The owner decides security, money, what git cannot bring back, and product behaviour (what a
 user can do or see, rights, data, prices, promises to people), except as the next paragraph says. An

@@ -141,7 +141,7 @@ Reads the profile from `husk.json`. Without `--force`, files you edited are kept
 ### `husk add <block> [dir]` / `husk remove <block> [dir]` / `husk blocks` — optional rule sets
 
 ```
-husk blocks                  # list: guard, lint, review, scenarios, workflow, project-facts
+husk blocks                  # list: backlog, guard, lint, review, scenarios, workflow, project-facts
 husk add review              # inside an envelope
 husk add workflow "C:\Projects\my-app"
 husk remove workflow
@@ -158,6 +158,7 @@ are listed in `husk.json`, so `husk apply` on another machine restores them.
 | `workflow` | orchestration: grilling → sheet → implementer subagent → verify → fix loop → commit → close step |
 | `project-facts` | skeleton for local facts: how to run, database, read-only rule, checks, traps |
 | `lint` | optional: `lint/sheet.mjs` reads work sheets and reports every breach of the sheet limits of the base rules (size, step and line length, template text in ticked steps, duplicate ids, closed or running rounds, `sha: later` in a done sheet, leftover snapshot pins) as `file:line rule: message`; edits nothing; exit 1 on a problem |
+| `backlog` | optional: `work/BACKLOG.md`, one line per future work item in the order they will be done, each with the items it comes `after:`; the section also says that open `Owner TODO` lines and deferred findings become backlog lines before an item is archived; the file is yours once written |
 | `guard` | Claude Code only: a PreToolUse hook (`guard/guard.mjs`, `.claude/settings.json`) that denies shell commands hitting more than the agent's own work (kill by name, remove every container) and asks the owner before ones git cannot undo (`git checkout -- <file>`, `restore`, `reset --hard`, `stash`, `clean`, recursive delete outside the folder); the rules in `guard/patterns.json` are yours to edit. An envelope that already has its own `.claude/settings.json` keeps it (`add` reports `differs; yours, never replaced`): merge the `hooks` entry by hand |
 
 Text outside the markers is yours. Tune a block's section in place; `husk apply` then reports `differs`
@@ -195,7 +196,7 @@ Archived sheets stay as they are.
 | `--init-git` | wrap | folder without `.git` gets `git init` + commit `initial import` first |
 | `--profile <name>` | wrap, new, apply | use `templates/<name>/`; default `base` |
 | `--no-commit` | wrap, new | build the envelope but skip its initial commit |
-| `--force` | apply, add | overwrite husk-owned files, the `AGENTS.md` base region and block sections; never `archive/INDEX.md`, `.gitignore`, `.gitattributes`, `CLAUDE.md`, `.claude/settings.json`, `guard/patterns.json`, the `project-facts` section or your own sections of `AGENTS.md` |
+| `--force` | apply, add | overwrite husk-owned files, the `AGENTS.md` base region and block sections; never `archive/INDEX.md`, `.gitignore`, `.gitattributes`, `CLAUDE.md`, `.claude/settings.json`, `guard/patterns.json`, `work/BACKLOG.md`, the `project-facts` section or your own sections of `AGENTS.md` |
 
 ### Which one
 

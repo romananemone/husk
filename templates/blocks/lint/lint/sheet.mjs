@@ -2,7 +2,7 @@
 // Checks the format and the size limits of work sheets. Reads only; it never edits a sheet.
 //
 //   node lint/sheet.mjs [<sheet>...]    a sheet (.md), or an item folder (its SHEET.md); no argument = every
-//                                       sheet under work/ of this envelope (not _TEMPLATE.md)
+//                                       sheet under work/ of this envelope (not _TEMPLATE.md, not BACKLOG.md)
 //
 // Output: `<path>:<line> <rule>: <message>` per problem, then one summary line per sheet.
 // Exit 1 when any sheet has a problem; notes do not count.
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const MAX_SHEET_BYTES = 32 * 1024;
 const MAX_STEP_CHARS = 600;
-const MAX_LINE_CHARS = 1000;
+const MAX_LINE_CHARS = 1500;
 const STATUSES = ["active", "paused", "done"];
 const SECTIONS = ["Goal", "Context", "Steps", "Findings", "Decisions", "Owner TODO", "Review", "Scenarios"];
 
@@ -27,7 +27,7 @@ function discover() {
   if (!existsSync(dir)) return [];
   const found = [];
   for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-    if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "_TEMPLATE.md") found.push(join(dir, entry.name));
+    if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "_TEMPLATE.md" && entry.name !== "BACKLOG.md") found.push(join(dir, entry.name));
     if (entry.isDirectory() && existsSync(join(dir, entry.name, "SHEET.md"))) found.push(join(dir, entry.name, "SHEET.md"));
   }
   return found;
@@ -154,6 +154,7 @@ function check(abs, path) {
   for (const s of steps) {
     const m = s.ticked && /\b(check|sha|artifact):\s*<[^>]*>/.exec(s.text);
     if (m) add(s.line, "placeholder", `ticked step still has template text after \`${m[1]}:\``);
+    else if (s.ticked && s.text.includes("@ <sha>")) add(s.line, "placeholder", "ticked step still has the literal `@ <sha>`");
   }
 
   // line, x placeholder, ids, rounds, sha-later, section
